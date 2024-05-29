@@ -4,3 +4,4 @@ langchain_community
 langgraph
 langsmith
 IPython
+pip install python-dotenv

@@ -1,8 +1,8 @@
-from langchain.prompts import PromptTemplate , ChatPromptTemplate, MessagesPlaceholder
+from langchain.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 
 from langgraph_logic.state import State
@@ -51,7 +51,7 @@ def game_title_searcher(state: State):
                 You are part of a chatbot that provides personalized video game recommendations based on user preferences. \n
                 Your task is to search for video games that match the user query. \n
                 Only return the titles of the games. \n
-                The number of games to return is limited to 3. \n\n
+                The number of games to return is limited to the top 3. \n\n
 
                 The results provided will STRICTLY look as follows (Python list): \n
                 ["game_title_1", "game_title_2", "game_title_3", ...] \n
@@ -70,7 +70,7 @@ def game_title_searcher(state: State):
     game_title_search_agent_result = game_title_search_agent_executor.invoke({"query": state["query"], "messages": state["messages"]})
     games_list = json.loads(game_title_search_agent_result["output"].strip())
 
-    state["messages"] = [HumanMessage(role="user", content=str(game_title_search_agent_result["output"]))]
+    state["messages"] = [AIMessage(role="assistant", content=str(game_title_search_agent_result["output"]))]
     state["games"] = games_list
 
     return state
@@ -126,8 +126,52 @@ def game_details_searcher(state: State):
         game_details = json.loads(output_cleaned)
         game_details_dict.update(game_details)
 
-    state["messages"] = [HumanMessage(role="user", content=str(game_details_search_agent_result["output"]))]
+    state["messages"] = [AIMessage(role="assistant", content=str(game_details_search_agent_result["output"]))]
     state["details"] = game_details_dict
 
     return state
 
+def game_recommendation_response(state: State):
+    games_details = state["details"]
+    games_info = "\n\n".join(
+        f"**{title}**\n"
+        f"Description: {details['description']}\n"
+        f"Platforms: {', '.join(details['platforms'])}\n"
+        f"Genres: {', '.join(details['genres'])}\n"
+        f"Developer: {details['developer']}\n"
+        f"Publisher: {details['publisher']}\n"
+        f"Release Date: {details['release_date']}\n"
+        f"Metacritic Score: {details['metacritic_score']}"
+        for title, details in games_details.items()
+    )
+
+    game_recommendation_response_prompt = PromptTemplate(
+        template=
+        """
+        You are part of a chatbot that provides personalized video game recommendations based on user preferences. \n
+        Based on the following details, generate a friendly and engaging response to the user's query.
+
+        An example of a proper response could be: \n
+        "Based on your preferences, here are some great games you might enjoy: \n
+        **Game Title 1** \n
+        Description: Description of the game \n
+        Platforms: Platform1, Platform2 \n
+        Genres: Genre1, Genre2 \n
+        Developer: Developer Name \n
+        Publisher: Publisher Name \n
+        Release Date: Release Date \n
+        Metacritic Score: Score \n\n
+        ... \n\n
+        We hope you find these recommendations helpful! If you have any more questions or need further assistance, feel free to ask. \n\n
+
+        Games to Recommend: {games_info}
+        """,
+        input_variables=["games_info"]
+    )
+
+    game_recommendation_response = game_recommendation_response_prompt | llm | StrOutputParser()
+    game_recommendation_response_result = game_recommendation_response.invoke({"games_info": games_info})
+
+    state["messages"] = [AIMessage(role="assistant", content=game_recommendation_response_result)]
+
+    return state
