@@ -21,13 +21,17 @@ def main():
             "query": user_input,
             "relevant": False,
             "games": [],
-            "details": {}
+            "details": {},
+            "response": ""
         }
 
-        for event in graph.stream(state, {"recursion_limit": 150}):
-            for value in event.values():
-                if isinstance(value["messages"][-1], AIMessage):
-                    print("Assistant:", value["messages"][-1].content)
+        # for event in graph.stream(state, {"recursion_limit": 150}):
+        #     for value in event.values():
+        #         if isinstance(value["messages"][-1], AIMessage):
+        #             print("Assistant:", value["messages"][-1].content)
+
+        output = graph.invoke(state)
+        print("Assistant:", output["response"])
 
 if __name__ == "__main__":
     main()

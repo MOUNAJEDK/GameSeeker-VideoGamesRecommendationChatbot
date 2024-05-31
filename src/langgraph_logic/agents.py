@@ -38,7 +38,16 @@ def query_classifier(state: State):
 
     query_classification = query_classifier_prompt | llm | StrOutputParser()
     query_classification_result = query_classification.invoke({"query": state["query"]})
-    state["relevant"] = query_classification_result.lower() == "relevant"
+    state["relevant"] = query_classification_result.lower().strip() == "relevant"
+
+    return state
+
+def query_not_relevant(state: State):
+    state["messages"] = [AIMessage(
+        role="assistant",
+        content="Your query is not relevant to video game recommendations. Please try asking about video games."
+    )]
+    state["response"] = "Your query is not relevant to video game recommendations. Please try asking about video games."
 
     return state
 
@@ -95,13 +104,13 @@ def game_details_searcher(state: State):
                 The results provided will STRICTLY look as follows (Python dictionary): \n
                 {{
                     "game_title": {{
-                        "description": "description of the game",
-                        "platforms": ["platform1", "platform2"],
-                        "genres": ["genre1", "genre2"],
-                        "developer": "developer name",
-                        "publisher": "publisher name",
-                        "release_date": "release date",
-                        "metacritic_score": score
+                        "description": "description of the game" (string),
+                        "platforms": ["platform1", "platform2"] (list of strings),
+                        "genres": ["genre1", "genre2"] (list of strings),
+                        "developer": "developer name" (string),
+                        "publisher": "publisher name" (string),
+                        "release_date": "release date" (string),
+                        "metacritic_score": score (float)
                     }}
                 }} \n
                 IMPORTANT: No additional information should be included in the output. \n\n
@@ -173,5 +182,6 @@ def game_recommendation_response(state: State):
     game_recommendation_response_result = game_recommendation_response.invoke({"games_info": games_info})
 
     state["messages"] = [AIMessage(role="assistant", content=game_recommendation_response_result)]
+    state["response"] = game_recommendation_response_result
 
     return state

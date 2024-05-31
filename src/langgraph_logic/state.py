@@ -9,3 +9,4 @@ class State(TypedDict):
     relevant: bool
     games: list[dict]
     details: dict[str, dict]
+    response: str
