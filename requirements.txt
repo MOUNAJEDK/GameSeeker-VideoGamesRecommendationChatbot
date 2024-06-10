@@ -1,6 +1,7 @@
 langchain
 langchain-openai
 langchain_community
+langchain_core
 langgraph
 langsmith
 IPython
