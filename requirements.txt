@@ -4,5 +4,7 @@ langchain_community
 langchain_core
 langgraph
 langsmith
+chainlit
+langchain-google-community
 IPython
 python-dotenv
