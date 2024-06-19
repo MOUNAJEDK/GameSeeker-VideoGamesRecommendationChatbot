@@ -41,7 +41,7 @@ def game_title_search_node(state: State):
 
         games_list = state["games"]
         games_message = "🎮 **Top Recommended Games for You** 🎮\n\n"
-        games_message += "\n".join([f"    • **{game}**" for game in games_list])
+        games_message += "\n".join([f"    • 🕹️ **{game}**" for game in games_list])
 
         message = AIMessage(content=games_message)
         state["response"] = [message]
@@ -62,7 +62,7 @@ def rawg_io_link_node(state: State):
     return state
 
 def game_details_scrape_node(state: State):
-    message = "\n\nℹ️ **Here is some additional info on each game:** ℹ️\n\n"
+    message = "\n\n➕ **Here is some additional info on each game:** ➕\n\n"
 
     for index, link in enumerate(state["links"]):
         smart_scraper_graph = SmartScraperGraph(
