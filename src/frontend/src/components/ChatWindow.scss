@@ -7,15 +7,18 @@
   font-family: 'Poppins', sans-serif;
 
   .navbar {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center the text horizontally */
     background-color: #0a0a0a; /* Blended color */
     padding: 1rem;
-    text-align: center;
     border-bottom: none;
 
     h1 {
       margin: 0;
       color: #ff4d4d; /* Red with a hint of pink */
       font-size: 1.5rem;
+      font-weight: 300; /* Make the font slimmer */
     }
   }
 }
