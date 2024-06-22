@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './MessageList.scss';
+import botAvatar from '../assets/logo.png'; // Adjust the path if needed
 
 const messageVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -22,11 +23,13 @@ const MessageList = ({ messages }) => {
             transition={{ duration: 0.3 }}
           >
             <div className="message-content">
-              <img
-                src={message.sender === 'bot' ? '/path/to/bot-avatar.png' : '/path/to/user-avatar.png'}
-                alt={`${message.sender} avatar`}
-                className="avatar"
-              />
+              {message.sender === 'bot' && (
+                <img
+                  src={botAvatar}
+                  alt={`${message.sender} avatar`}
+                  className="avatar"
+                />
+              )}
               <div className="text">{message.text}</div>
             </div>
           </motion.div>
