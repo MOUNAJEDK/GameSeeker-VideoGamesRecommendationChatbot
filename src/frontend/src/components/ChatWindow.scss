@@ -4,17 +4,17 @@
   height: 100vh;
   background-color: #0a0a0a;
   color: #e0e0e0;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Poppins', sans-serif;
 
   .navbar {
-    background-color: #1e1e1e;
+    background-color: #0a0a0a; /* Blended color */
     padding: 1rem;
     text-align: center;
-    border-bottom: 1px solid #333;
+    border-bottom: none;
 
     h1 {
       margin: 0;
-      color: #ff0000;
+      color: #ff4d4d; /* Red with a hint of pink */
       font-size: 1.5rem;
     }
   }

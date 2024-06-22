@@ -29,7 +29,6 @@ const MessageList = ({ messages }) => {
               />
               <div className="text">{message.text}</div>
             </div>
-            <div className="timestamp">{new Date().toLocaleTimeString()}</div>
           </motion.div>
         ))}
       </AnimatePresence>
