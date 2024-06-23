@@ -1,15 +1,58 @@
 .App {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    background-color: #0a0a0a;
-    color: #e0e0e0;
-  
-    .App-header {
-      font-size: 2rem;
-      color: #ff0000;
-      text-align: center;
-      padding: 1rem;
-      border-bottom: 1px solid #333;
+  position: relative;
+  height: 100vh;
+  background-color: #0a0a0a;
+  color: #e0e0e0;
+  overflow: hidden;
+
+  .background-shapes {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+
+    .shape {
+      position: absolute;
+      border: 2px solid rgba(255, 77, 77, 0.4);
+      animation: float 10s ease-in-out infinite, rotate 20s linear infinite;
+
+      @for $i from 1 through 10 {
+        &-#{$i} {
+          clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+          width: #{100 + random(100)}px;
+          height: #{100 + random(100)}px;
+          top: #{random(90)}vh;
+          left: #{random(90)}vw;
+          animation-duration: #{20 + $i * 2}s;
+          animation-delay: -#{$i * 2}s;
+        }
+      }
     }
   }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

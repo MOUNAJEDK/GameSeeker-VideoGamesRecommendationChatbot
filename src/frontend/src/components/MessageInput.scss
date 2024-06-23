@@ -2,15 +2,15 @@
   display: flex;
   justify-content: center;
   padding: 1rem;
-  background-color: #0a0a0a; /* Same color as MessageList and navbar */
+  background-color: rgba(10, 10, 10, 0.8);
   border-top: none;
 
   .MuiOutlinedInput-root {
-    width: 60%; /* Smaller width */
-    border-radius: 50px; /* Oval shape */
-    background-color: #1e1e1e;
+    width: 60%;
+    border-radius: 50px;
+    background-color: rgba(30, 30, 30, 0.8);
     color: #fff;
-    margin: 0 auto; /* Centering the chatbox */
+    margin: 0 auto;
     fieldset {
       border-color: #333;
     }
@@ -18,11 +18,11 @@
       border-color: #555;
     }
     &.Mui-focused fieldset {
-      border-color: #ff4d4d; /* Red with a hint of pink */
+      border-color: #ff4d4d;
     }
   }
 
   .MuiIconButton-root {
-    color: #ff4d4d; /* Red with a hint of pink */
+    color: #ff4d4d;
   }
 }

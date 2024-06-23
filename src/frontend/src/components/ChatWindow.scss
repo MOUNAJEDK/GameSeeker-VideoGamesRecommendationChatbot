@@ -2,23 +2,25 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #0a0a0a;
+  background-color: transparent;
   color: #e0e0e0;
   font-family: 'Poppins', sans-serif;
+  position: relative;
+  z-index: 2;
 
   .navbar {
     display: flex;
     align-items: center;
-    justify-content: center; /* Center the text horizontally */
-    background-color: #0a0a0a; /* Blended color */
+    justify-content: center;
+    background-color: rgba(10, 10, 10, 0.8);
     padding: 1rem;
     border-bottom: none;
 
     h1 {
       margin: 0;
-      color: #ff4d4d; /* Red with a hint of pink */
+      color: #ff4d4d;
       font-size: 1.5rem;
-      font-weight: 300; /* Make the font slimmer */
+      font-weight: 300;
     }
   }
 }

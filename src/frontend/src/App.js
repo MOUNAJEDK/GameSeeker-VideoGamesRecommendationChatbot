@@ -1,13 +1,14 @@
 import React from 'react';
 import ChatWindow from './components/ChatWindow';
-import './App.scss'; // Import App-specific styles
+import './App.scss';
 
 function App() {
   return (
     <div className="App">
       <div className="background-shapes">
-        <div className="shape1"></div>
-        <div className="shape2"></div>
+        {[...Array(10)].map((_, i) => (
+          <div key={i} className={`shape shape-${i + 1}`}></div>
+        ))}
       </div>
       <ChatWindow />
     </div>
