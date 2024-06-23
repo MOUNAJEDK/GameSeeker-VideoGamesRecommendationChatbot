@@ -19,17 +19,17 @@ def query_classification_node(state: State):
     elif query_classification_output.lower().strip() == "irrelevant":
         state["category"] = "irrelevant"
         state["messages"] = [query_classification_output]
-        state["response"] = [AIMessage(content="❗ I'm sorry, but I'm only able to provide video game recommendations. Please ask me a question related to video games.\n\n")]
+        state["response"] = [AIMessage(content="❗ I'm sorry, but I'm only able to provide video game recommendations. Please ask me a question related to video games.")]
         return state
     elif query_classification_output.lower().strip() == "greeting":
         state["category"] = "greeting"
         state["messages"] = [query_classification_output]
-        state["response"] = [AIMessage(content="👋 Hello! I'm an AI assistant specialized in providing personalized video game recommendations. 🎮 Feel free to ask me anything related to video games.\n\n")]
+        state["response"] = [AIMessage(content="👋 Hello! I'm an AI assistant specialized in providing personalized video game recommendations. 🎮 Feel free to ask me anything related to video games.")]
         return state
     elif query_classification_output.lower().strip() == "incomplete":
         state["category"] = "incomplete"
         state["messages"] = [query_classification_output]
-        state["response"] = [AIMessage(content="📝 I'm sorry, but I need more information to provide you with video game recommendations. Please be more specific in your query.\n\n")]
+        state["response"] = [AIMessage(content="📝 I'm sorry, but I need more information to provide you with video game recommendations. Please be more specific in your query.")]
         return state
 
 def game_title_search_node(state: State):
@@ -40,8 +40,9 @@ def game_title_search_node(state: State):
         state["games"] = json.loads(state["messages"][-1].content)
 
         games_list = state["games"]
-        games_message = "🎮 **Top Recommended Games for You** 🎮\n\n"
-        games_message += "\n".join([f"    • 🕹️ **{game}**" for game in games_list])
+        games_message = "🎮 **Top Recommended Games for You:** 🎮\n"
+        for game in games_list:
+            games_message += f"    • 🕹️ **{game}**\n"
 
         message = AIMessage(content=games_message)
         state["response"] = [message]
@@ -62,7 +63,7 @@ def rawg_io_link_node(state: State):
     return state
 
 def game_details_scrape_node(state: State):
-    message = "\n\n➕ **Here is some additional info on each game:** ➕\n\n"
+    message = "\n\n➕ **Here is some additional info on each game:** ➕\n"
 
     for index, link in enumerate(state["links"]):
         smart_scraper_graph = SmartScraperGraph(
@@ -82,7 +83,7 @@ def game_details_scrape_node(state: State):
         message += f"    - 🖥️ **Platforms**: {game_details.get('Platforms', 'N/A')}\n"
         message += f"    - 📅 **Release date**: {game_details.get('Release date', 'N/A')}\n"
         message += f"    - 🛠️ **Developer**: {game_details.get('Developer', 'N/A')}\n"
-        message += f"    - 🏢 **Publisher**: {game_details.get('Publisher', 'N/A')}\n\n"
+        message += f"    - 🏢 **Publisher**: {game_details.get('Publisher', 'N/A')}\n"
 
     state["response"] = [AIMessage(content=message)]
     

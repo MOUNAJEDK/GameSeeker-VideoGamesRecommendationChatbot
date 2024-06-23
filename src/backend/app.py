@@ -1,19 +1,62 @@
-from flask import Flask, request, Response, jsonify
-from flask_cors import CORS
+import asyncio
+import nest_asyncio
+
+import markdown2
+
+from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List
 from langchain_core.messages import HumanMessage
 from langgraph_logic.graph import graph
 from langgraph_logic.utils import _print_event
 
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+if asyncio.get_event_loop().is_closed():
+    asyncio.set_event_loop(asyncio.ProactorEventLoop())
+else:
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
-responses = {}
+nest_asyncio.apply()
 
-@app.route("/send_message", methods=["POST"])
-def send_message():
-    data = request.json
-    user_input = data.get("input")
+app = FastAPI(
+    title="Video Game Recommendation Chatbot",
+    version="1.0",
+    description="An API server to provide personalized video game recommendations."
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Adjust the origin as per your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+async def redirect_root_to_docs():
+    return RedirectResponse("/docs")
+
+class Input(BaseModel):
+    input: str
+
+class Output(BaseModel):
+    output: List[str]
+
+def format_message(content: str) -> str:
+    # Convert markdown to HTML
+    html_content = markdown2.markdown(content)
     
+    # Replace newlines with <br> tags for proper line breaks
+    html_content = html_content.replace('\n', '<br>')
+    
+    return html_content
+
+@app.post("/chat", response_model=Output)
+async def chat_endpoint(request: Request):
+    data = await request.json()
+    user_input = data.get("input")
+
     state = {
         "messages": [HumanMessage(content=user_input)],
         "query": user_input,
@@ -24,35 +67,20 @@ def send_message():
         "index": 0,
         "response": []
     }
-    
+
     _printed = set()
-    response_id = str(len(responses))
-    responses[response_id] = []
+    response_list = []
 
-    def generate():
-        for event in graph.stream(state, config=None, stream_mode="values"):
-            output = _print_event(event, _printed)
-            if output:
-                responses[response_id].append(output)
-                print(f"Sending chunk: {output}")  # Debug statement
-                yield f"data: {output}\n\n"
-        print("Sending done signal")
-        yield "data: [DONE]\n\n"  # Signal the end of the stream
-    
-    return jsonify({"response_id": response_id})
+    async for event in graph.astream(state, config={"recursion_limit": 50}, stream_mode="values"):
+        output = _print_event(event, _printed)
+        if output:
+            formatted_output = format_message(output)
+            response_list.append(formatted_output)
 
-@app.route("/stream_response/<response_id>", methods=["GET"])
-def stream_response(response_id):
-    def generate():
-        print(f"Streaming response for ID: {response_id}")
-        for chunk in responses.get(response_id, []):
-            print(f"Streaming chunk: {chunk}")  # Debug statement
-            yield f"data: {chunk}\n\n"
-        print("Streaming done signal")
-        yield "data: [DONE]\n\n"
-        del responses[response_id]
+    combined_response = " ".join(response_list)
 
-    return Response(generate(), mimetype='text/event-stream')
+    return {"output": [combined_response]}
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

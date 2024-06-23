@@ -57,6 +57,8 @@
         background-color: inherit;
         padding: 0.5rem 1rem;
         border-radius: 10px;
+        white-space: pre-wrap;  // Add this line
+        word-break: break-word; // Add this line
       }
     }
   }

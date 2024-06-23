@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './MessageList.scss';
-import botAvatar from '../assets/logo.png'; // Adjust the path if needed
+import botAvatar from '../assets/logo.png';
 
 const messageVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -30,7 +30,10 @@ const MessageList = ({ messages }) => {
                   className="avatar"
                 />
               )}
-              <div className="text">{message.text}</div>
+              <div 
+                className="text"
+                dangerouslySetInnerHTML={{ __html: message.text }}
+              />
             </div>
           </motion.div>
         ))}
