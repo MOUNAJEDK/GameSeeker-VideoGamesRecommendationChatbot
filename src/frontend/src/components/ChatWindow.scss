@@ -7,11 +7,12 @@
   font-family: 'Poppins', sans-serif;
   position: relative;
   z-index: 2;
+  padding-bottom: 5rem; /* Add padding to the bottom to accommodate the input box */
 
   .navbar {
     display: flex;
     align-items: center;
-    justify-content: flex-start;  /* Align title to the left */
+    justify-content: flex-start; /* Align title to the left */
     background-color: rgba(10, 10, 10, 0.8);
     padding: 1rem;
     border-bottom: none;

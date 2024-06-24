@@ -13,25 +13,53 @@ const MessageInput = ({ onSendMessage }) => {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   return (
-    <div className="message-input">
-      <TextField
-        variant="outlined"
-        placeholder="Type a message..."
-        fullWidth
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        onKeyPress={(e) => {
-          if (e.key === 'Enter') handleSendMessage();
-        }}
-        InputProps={{
-          endAdornment: (
-            <IconButton color="primary" onClick={handleSendMessage}>
-              <Send />
-            </IconButton>
-          ),
-        }}
-      />
+    <div className="message-input-container">
+      <div className="message-input">
+        <TextField
+          multiline
+          minRows={1}
+          maxRows={5}
+          variant="outlined"
+          placeholder="Type a message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="message-textarea"
+          InputProps={{
+            style: {
+              borderRadius: '50px',
+              padding: '0.75rem 1.5rem',
+              backgroundColor: 'rgba(30, 30, 30, 0.8)',
+              color: '#fff',
+            },
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#333',
+              },
+              '&:hover fieldset': {
+                borderColor: '#555',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#ff4d4d',
+              },
+            },
+            width: '100%',
+          }}
+        />
+        <IconButton color="primary" onClick={handleSendMessage}>
+          <Send />
+        </IconButton>
+      </div>
     </div>
   );
 };

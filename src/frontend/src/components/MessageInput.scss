@@ -1,28 +1,71 @@
-.message-input {
+.message-input-container {
+  position: fixed; /* Change to fixed position */
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%; /* Adjusted width to make it slightly larger */
+  max-width: 800px; /* Adjusted max-width for responsiveness */
   display: flex;
   justify-content: center;
-  padding: 1rem;
+}
+
+.message-input {
+  display: flex;
+  align-items: center; /* Align items vertically */
   background-color: rgba(10, 10, 10, 0.8);
   border-top: none;
+  width: 100%; /* Ensure it takes full container width */
+  padding: 0.5rem;
+  border-radius: 50px;
 
   .MuiOutlinedInput-root {
-    width: 60%;
+    flex: 1;
     border-radius: 50px;
     background-color: rgba(30, 30, 30, 0.8);
     color: #fff;
-    margin: 0 auto;
-    fieldset {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    box-sizing: border-box;
+
+    & fieldset {
       border-color: #333;
     }
+
     &:hover fieldset {
       border-color: #555;
     }
+
     &.Mui-focused fieldset {
       border-color: #ff4d4d;
+    }
+
+    .MuiInputBase-input {
+      max-height: 150px; /* Adjusted max height */
+      overflow-y: auto;
+      padding: 0; /* Remove padding from input to use container's padding */
+
+      /* Custom scrollbar */
+      &::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: rgba(255, 77, 77, 0.1);
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 77, 77, 0.5);
+        border-radius: 4px;
+      }
+    }
+
+    &::placeholder {
+      color: #aaa;
     }
   }
 
   .MuiIconButton-root {
     color: #ff4d4d;
+    margin-left: 0.5rem; /* Space between input and button */
   }
 }
