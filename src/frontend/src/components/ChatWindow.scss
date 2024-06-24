@@ -11,7 +11,7 @@
   .navbar {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;  /* Align title to the left */
     background-color: rgba(10, 10, 10, 0.8);
     padding: 1rem;
     border-bottom: none;
@@ -21,6 +21,7 @@
       color: #ff4d4d;
       font-size: 1.5rem;
       font-weight: 300;
+      font-family: 'Montserrat', sans-serif;  /* Apply Montserrat font */
     }
   }
 }

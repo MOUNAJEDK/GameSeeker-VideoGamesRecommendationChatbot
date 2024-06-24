@@ -40,7 +40,7 @@ const ChatWindow = () => {
   return (
     <div className="chat-window">
       <nav className="navbar">
-        <h1>GameSeeker AI</h1>
+        <h1 className="navbar-title">GameSeeker AI</h1>
       </nav>
       <MessageList messages={messages} />
       <MessageInput onSendMessage={handleSendMessage} />
