@@ -8,7 +8,18 @@ const messageVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-const MessageList = ({ messages }) => {
+const LoadingBubble = () => (
+  <div className="message bot loading">
+    <div className="message-content">
+      <img src={botAvatar} alt="bot avatar" className="avatar" />
+      <div className="loading-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+);
+
+const MessageList = ({ messages, loading }) => {
   return (
     <div className="message-list">
       <AnimatePresence>
@@ -30,13 +41,14 @@ const MessageList = ({ messages }) => {
                   className="avatar"
                 />
               )}
-              <div 
+              <div
                 className="text"
                 dangerouslySetInnerHTML={{ __html: message.text }}
               />
             </div>
           </motion.div>
         ))}
+        {loading && <LoadingBubble />}
       </AnimatePresence>
     </div>
   );

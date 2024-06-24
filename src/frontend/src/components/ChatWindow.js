@@ -8,6 +8,7 @@ const ChatWindow = () => {
     { id: 1, text: 'Welcome to the chatbot!', sender: 'bot' },
     { id: 2, text: 'Hello! How can I assist you today?', sender: 'bot' },
   ]);
+  const [loading, setLoading] = useState(false);
 
   const handleSendMessage = async (message) => {
     const newMessage = {
@@ -16,6 +17,7 @@ const ChatWindow = () => {
       sender: 'user',
     };
     setMessages([...messages, newMessage]);
+    setLoading(true);
 
     try {
       const response = await fetch('http://localhost:8000/chat', {
@@ -28,12 +30,29 @@ const ChatWindow = () => {
       const data = await response.json();
       const botMessage = {
         id: messages.length + 2,
-        text: data.output[0],
+        text: '',
         sender: 'bot',
       };
       setMessages((prevMessages) => [...prevMessages, botMessage]);
+      setLoading(false);
+
+      // Simulate typing effect
+      let index = 0;
+      const interval = setInterval(() => {
+        if (index < data.output[0].length) {
+          botMessage.text += data.output[0][index];
+          setMessages((prevMessages) => [
+            ...prevMessages.slice(0, -1),
+            botMessage,
+          ]);
+          index++;
+        } else {
+          clearInterval(interval);
+        }
+      }, 5);  // Faster typing effect
     } catch (error) {
       console.error('Error fetching response from the backend:', error);
+      setLoading(false);
     }
   };
 
@@ -42,7 +61,7 @@ const ChatWindow = () => {
       <nav className="navbar">
         <h1 className="navbar-title">GameSeeker AI</h1>
       </nav>
-      <MessageList messages={messages} />
+      <MessageList messages={messages} loading={loading} />
       <MessageInput onSendMessage={handleSendMessage} />
     </div>
   );
