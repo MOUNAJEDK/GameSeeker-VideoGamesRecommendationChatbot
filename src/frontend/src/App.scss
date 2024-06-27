@@ -4,6 +4,7 @@
   background-color: #0a0a0a;
   color: #e0e0e0;
   overflow: hidden;
+  font-family: 'Poppins', sans-serif;
 
   .background-shapes {
     position: absolute;
@@ -31,6 +32,18 @@
       }
     }
   }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+  }
+}
+
+.gameseeker-ai-text {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+  color: #ff4d4d;
 }
 
 @keyframes float {

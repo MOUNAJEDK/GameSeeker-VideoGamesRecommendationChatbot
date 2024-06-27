@@ -7,12 +7,12 @@
   font-family: 'Poppins', sans-serif;
   position: relative;
   z-index: 2;
-  padding-bottom: 5rem; /* Add padding to the bottom to accommodate the input box */
+  padding-bottom: 5rem;
 
   .navbar {
     display: flex;
     align-items: center;
-    justify-content: flex-start; /* Align title to the left */
+    justify-content: flex-start;
     background-color: rgba(10, 10, 10, 0.8);
     padding: 1rem;
     border-bottom: none;
@@ -26,12 +26,28 @@
       }
     }
 
-    h1 {
+    .navbar-title {
       margin: 0;
-      color: #ff4d4d;
       font-size: 1.5rem;
-      font-weight: 300;
-      font-family: 'Montserrat', sans-serif;  /* Apply Montserrat font */
+    }
+
+    .logout-button {
+      margin-left: 1rem;
+      color: #ff4d4d;
+      border: 1px solid #ff4d4d;
+      background-color: transparent;
+      text-transform: none;
+      font-size: 0.9rem;
+      padding: 5px 15px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background-color: rgba(255, 77, 77, 0.1);
+      }
+
+      .MuiButton-startIcon {
+        margin-right: 5px;
+      }
     }
   }
 }
