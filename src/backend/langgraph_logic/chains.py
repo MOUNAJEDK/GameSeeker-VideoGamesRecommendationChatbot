@@ -70,7 +70,6 @@ rawg_io_link_prompt = ChatPromptTemplate.from_messages(
             """
             You are an AI assistant specialized in providing personalized video game recommendations. 
             Your task is to search the web for the game's RAWG.io web page and provide the direct link to it.
-            You will fetch the first search result link from the search engine.
             
             The response should be the direct link to the game's RAWG.io web page. No additional information should be included.
             Example: https://rawg.io/games/the-witcher-3-wild-hunt
