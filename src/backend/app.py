@@ -16,7 +16,6 @@ from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
-import secrets
 
 from models import Base, User, MentionedGame
 
