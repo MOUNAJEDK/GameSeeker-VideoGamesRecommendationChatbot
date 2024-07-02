@@ -1,12 +1,20 @@
-from langchain_core.messages import AIMessage
+from typing import Callable
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from scrapegraphai.graphs import SmartScraperGraph
-from scrapegraphai.utils import prettify_exec_info
 
 from langgraph_logic.utils import GRAPH_CONFIG
 from langgraph_logic.chains import query_classification, game_title_search, rawg_io_link, game_extraction, answer_analysis
 from langgraph_logic.state import State
 
 import json
+import sys
+import os
+
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+sys.path.append(parent_dir)
+
+from models import MentionedGame
 
 def query_classification_node(state: State):
     query_classification_output = query_classification.invoke({"query": state["query"], "messages": state["messages"]})
@@ -94,9 +102,38 @@ def games_recommendation_result_node(state: State):
     state["response"] = message
     return state
 
-def answer_analysis_node(state: State):
-    analysis_result = answer_analysis.invoke({"response": state["query"]})
-    state["for_user"] = analysis_result == "for_user"
-    state["response"] = "for_user" if state["for_user"] else "for_other"
-    state["response"] += "\nExtracted Game: " + state["extracted_game"]
-    return state
+def answer_analysis_node(db_session_factory: Callable[[], AsyncSession]):
+    async def _answer_analysis_node(state: State):
+        analysis_result = answer_analysis.invoke({"response": state["query"]})
+        state["for_user"] = analysis_result == "for_user"
+        state["response"] = "for_user" if state["for_user"] else "for_other"
+        
+        if state["for_user"]:
+            async with db_session_factory() as db:
+                # Check if the game is already mentioned for this user
+                result = await db.execute(
+                    select(MentionedGame).where(
+                        (MentionedGame.user_id == state["user_id"]) & 
+                        (MentionedGame.game_title == state["extracted_game"])
+                    )
+                )
+                existing_game = result.scalar_one_or_none()
+                
+                if not existing_game:
+                    new_mentioned_game = MentionedGame(
+                        user_id=state["user_id"],
+                        game_title=state["extracted_game"]
+                    )
+                    db.add(new_mentioned_game)
+                    state["response"] += f"\nI've noted your interest in {state['extracted_game']}."
+                else:
+                    existing_game.mention_count += 1
+                    state["response"] += f"\nI see you've mentioned {state['extracted_game']} again."
+                
+                await db.commit()
+        else:
+            state["response"] += f"\nI understand that you're asking about {state['extracted_game']} for someone else."
+        
+        return state
+
+    return _answer_analysis_node

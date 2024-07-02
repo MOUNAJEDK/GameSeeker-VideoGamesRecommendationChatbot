@@ -8,7 +8,7 @@ import os
 
 load_dotenv()
 
-LLM = ChatOpenAI(model="gpt-4o", temperature=0.2)
+LLM = ChatOpenAI(model="gpt-4o", temperature=0)
 
 GOOGLE_GAME_TITLE_SEARCH = GoogleSearchAPIWrapper(
     google_cse_id=os.getenv("GOOGLE_CSE_ID_GAME_TITLE_SEARCH"),

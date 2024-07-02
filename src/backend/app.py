@@ -8,8 +8,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import List, Optional
 from langchain_core.messages import HumanMessage
-from langgraph_logic.graph import graph
-from langgraph_logic.utils import _print_event
+from langgraph_logic.graph import create_graph
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -69,6 +68,9 @@ async def get_db():
         yield db
     finally:
         await db.close()
+
+# Create the graph with the database session factory
+graph = None
 
 # Authentication functions
 def verify_password(plain_password, hashed_password):
@@ -187,7 +189,6 @@ async def redirect_root_to_docs():
 async def chat_endpoint(
     input_data: Input,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
 ):
     user_input = input_data.input
 
@@ -206,9 +207,6 @@ async def chat_endpoint(
         "response": [],
         "user_id": current_user.id,
     }
-
-    # _printed = set()
-    # response_list = []
 
     output = await graph.ainvoke(state, config=config)
     formatted_output = format_message(output["response"])
@@ -294,6 +292,8 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
 
 @app.on_event("startup")
 async def startup():
+    global graph
+    graph = create_graph(AsyncSessionLocal)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
