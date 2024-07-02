@@ -94,11 +94,26 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
     }
   };
 
-  const handleNewChat = () => {
-    updateUserMessages(username, [
-      { id: 1, text: 'Welcome to GameSeeker AI!', sender: 'bot' },
-      { id: 2, text: 'How can I assist you with video game recommendations today?', sender: 'bot' },
-    ]);
+  const handleNewChat = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/new-chat', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+      });
+      if (response.ok) {
+        await response.json();  // We don't need to do anything with the response
+        updateUserMessages(username, [
+          { id: 1, text: 'Welcome to GameSeeker AI!', sender: 'bot' },
+          { id: 2, text: 'How can I assist you with video game recommendations today?', sender: 'bot' },
+        ]);
+      } else {
+        console.error('Failed to start a new chat');
+      }
+    } catch (error) {
+      console.error('Error starting a new chat:', error);
+    }
   };
 
   const handleLogout = () => {

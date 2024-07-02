@@ -29,7 +29,12 @@ query_classification_prompt = ChatPromptTemplate.from_messages(
                 - Example: "Can you help me?"
                 - Example: "I need some recommendations."
 
-            Your response should be the name of the category (no quotation marks to be displayed in the output): 'relevant', 'irrelevant', 'greeting', or 'incomplete'. Nothing more, nothing less.
+            5. 'expressing_interest' - Responses expressing interest or experience with a game.
+                - Example: "Yes, I love Minecraft!"
+                - Example: "I've been playing it for years."
+                - Example: "My friend can't stop talking about it."
+
+            Your response should be the name of the category (no quotation marks to be displayed in the output): 'relevant', 'irrelevant', 'greeting', 'incomplete', or 'expressing_interest'. Nothing more, nothing less.
             """
         ),
         ("user", "User Query: {query}"),
@@ -81,3 +86,44 @@ rawg_io_link_prompt = ChatPromptTemplate.from_messages(
 )
 
 rawg_io_link = rawg_io_link_prompt | LLM.bind_tools([RAWG_IO_LINK_TOOL])
+
+game_extraction_prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+            You are an AI assistant specialized in providing personalized video game recommendations.
+            Your task is to extract the name of the video game mentioned in the user's query.
+            
+            Your response should be only the name of the game, nothing more.
+            Example: "I'm looking for games similar to Skyrim." -> "Skyrim"
+            """
+        ),
+        ("user", "User Query: {query}"),
+    ]
+)
+
+game_extraction = game_extraction_prompt | LLM | StrOutputParser()
+
+answer_analysis_prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+            You are an AI assistant specialized in providing personalized video game recommendations.
+            Your task is to determine if the user's response indicates that they have personal experience with the game or if they're asking about it for someone else.
+            
+            Respond with:
+            - "for_user" if the response indicates personal experience or interest.
+            - "for_others" if the response suggests they're asking for someone else or have no personal experience.
+            
+            Your response should be only one of these two options, nothing more.
+            Example: "Yes, I love Minecraft!" -> "for_user"
+            Example: "My friend can't stop talking about it." -> "for_others"
+            """
+        ),
+        ("user", "User Response: {response}"),
+    ]
+)
+
+answer_analysis = answer_analysis_prompt | LLM | StrOutputParser()

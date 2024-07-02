@@ -191,6 +191,10 @@ async def chat_endpoint(
 ):
     user_input = input_data.input
 
+    thread_id = f"user_{current_user.id}"
+
+    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 50}
+
     state = {
         "messages": [HumanMessage(content=user_input)],
         "query": user_input,
@@ -199,27 +203,24 @@ async def chat_endpoint(
         "details": {},
         "links": [],
         "index": 0,
-        "response": []
+        "response": [],
+        "user_id": current_user.id,
     }
 
-    _printed = set()
-    response_list = []
+    # _printed = set()
+    # response_list = []
 
-    async for event in graph.astream(state, config={"recursion_limit": 50}, stream_mode="values"):
-        output = _print_event(event, _printed)
-        if output:
-            formatted_output = format_message(output)
-            response_list.append(formatted_output)
+    output = await graph.ainvoke(state, config=config)
+    formatted_output = format_message(output["response"])
 
-    combined_response = " ".join(response_list)
+    return {"output": [formatted_output]}
 
-    # Save mentioned games
-    for game in state["games"]:
-        mentioned_game = MentionedGame(user_id=current_user.id, game_title=game)
-        db.add(mentioned_game)
-    await db.commit()
-
-    return {"output": [combined_response]}
+@app.post("/new-chat")
+async def new_chat(current_user: User = Depends(get_current_user)):
+    # Generate a new unique thread_id for the user
+    new_thread_id = f"user_{current_user.id}_{datetime.utcnow().timestamp()}"
+    
+    return {"message": "New chat started", "thread_id": new_thread_id}
 
 @app.get("/mentioned-games")
 async def get_mentioned_games(

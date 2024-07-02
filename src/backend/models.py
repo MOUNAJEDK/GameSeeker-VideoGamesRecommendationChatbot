@@ -21,5 +21,6 @@ class MentionedGame(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     game_title = Column(String, nullable=False)
+    mention_count = Column(Integer, default=1)  # New column
 
     user = relationship("User", back_populates="mentioned_games")
