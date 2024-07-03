@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -12,8 +12,9 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
-
+    
     mentioned_games = relationship("MentionedGame", back_populates="user")
+    threads = relationship("Thread", back_populates="user")
 
 class MentionedGame(Base):
     __tablename__ = "mentioned_games"
@@ -21,6 +22,15 @@ class MentionedGame(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     game_title = Column(String, nullable=False)
-    mention_count = Column(Integer, default=1)  # New column
+    mention_count = Column(Integer, default=1)
 
     user = relationship("User", back_populates="mentioned_games")
+
+class Thread(Base):
+    __tablename__ = "threads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    thread_id = Column(String, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    user = relationship("User", back_populates="threads")

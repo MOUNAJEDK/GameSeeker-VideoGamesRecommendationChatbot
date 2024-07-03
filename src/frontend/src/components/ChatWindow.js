@@ -10,6 +10,7 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
   const [loading, setLoading] = useState(false);
   const [isResponding, setIsResponding] = useState(false);
   const [username, setUsername] = useState('');
+  const [threadId, setThreadId] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,10 +25,7 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
           const data = await response.json();
           setUsername(data.username);
           if (!userMessages[data.username]) {
-            updateUserMessages(data.username, [
-              { id: 1, text: 'Welcome to GameSeeker AI!', sender: 'bot' },
-              { id: 2, text: 'How can I assist you with video game recommendations today?', sender: 'bot' },
-            ]);
+            handleNewChat();
           }
         } else {
           throw new Error('Failed to fetch username');
@@ -61,7 +59,7 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ input: message }),
+        body: JSON.stringify({ input: message, thread_id: threadId }),
       });
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -103,7 +101,8 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
         },
       });
       if (response.ok) {
-        await response.json();  // We don't need to do anything with the response
+        const data = await response.json();
+        setThreadId(data.thread_id);
         updateUserMessages(username, [
           { id: 1, text: 'Welcome to GameSeeker AI!', sender: 'bot' },
           { id: 2, text: 'How can I assist you with video game recommendations today?', sender: 'bot' },

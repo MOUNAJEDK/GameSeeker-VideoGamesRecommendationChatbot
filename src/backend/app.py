@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
 
-from models import Base, User, MentionedGame
+from models import Base, User, MentionedGame, Thread
 
 from dotenv import load_dotenv
 import os
@@ -32,7 +32,7 @@ else:
 nest_asyncio.apply()
 
 # Database setup
-DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+DATABASE_URL = "sqlite+aiosqlite:///./users.db"
 engine = create_async_engine(DATABASE_URL)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -127,6 +127,7 @@ class Token(BaseModel):
 
 class Input(BaseModel):
     input: str
+    thread_id: str
 
 class Output(BaseModel):
     output: List[str]
@@ -141,6 +142,9 @@ class PasswordReset(BaseModel):
 class UserOut(BaseModel):
     username: str
     email: str
+
+class ThreadResponse(BaseModel):
+    thread_id: str
 
 # Helper functions
 def format_message(content: str) -> str:
@@ -189,10 +193,16 @@ async def redirect_root_to_docs():
 async def chat_endpoint(
     input_data: Input,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     user_input = input_data.input
+    thread_id = input_data.thread_id
 
-    thread_id = f"user_{current_user.id}"
+    # Verify that the thread belongs to the current user
+    result = await db.execute(select(Thread).filter(Thread.thread_id == thread_id, Thread.user_id == current_user.id))
+    thread = result.scalar_one_or_none()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found or does not belong to the current user")
 
     config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 50}
 
@@ -213,12 +223,22 @@ async def chat_endpoint(
 
     return {"output": [formatted_output]}
 
-@app.post("/new-chat")
-async def new_chat(current_user: User = Depends(get_current_user)):
+@app.post("/new-chat", response_model=ThreadResponse)
+async def new_chat(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     # Generate a new unique thread_id for the user
     new_thread_id = f"user_{current_user.id}_{datetime.utcnow().timestamp()}"
     
-    return {"message": "New chat started", "thread_id": new_thread_id}
+    # Create a new Thread instance
+    new_thread = Thread(thread_id=new_thread_id, user_id=current_user.id)
+    
+    # Add the new thread to the database
+    db.add(new_thread)
+    await db.commit()
+    
+    return {"thread_id": new_thread_id}
 
 @app.get("/mentioned-games")
 async def get_mentioned_games(

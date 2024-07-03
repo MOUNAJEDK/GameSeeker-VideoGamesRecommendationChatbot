@@ -33,7 +33,6 @@ def query_classification_node(state: State):
     elif query_classification_output.lower().strip() == "incomplete":
         state["category"] = "incomplete"
         state["messages"] = [query_classification_output]
-        state["response"] = "📝 I'm sorry, but I need more information to provide you with video game recommendations. Please be more specific in your query."
     elif query_classification_output.lower().strip() == "expressing_interest":
         state["category"] = "expressing_interest"
         state["messages"] = [query_classification_output]
@@ -97,7 +96,8 @@ def games_recommendation_result_node(state: State):
         message += f"    - 🛠️ **Developer**: {game_details.get('Developer', 'N/A')}\n"
         message += f"    - 🏢 **Publisher**: {game_details.get('Publisher', 'N/A')}\n"
 
-    message += f"\n\nIf you don't mind me asking, have you played or are you still playing {state['extracted_game']}? And if so, how did you like it? Was it enjoyable?"
+    if state["category"] == "relevant":
+        message += f"\n\nIf you don't mind me asking, have you played or are you still playing {state['extracted_game']}? And if so, how did you like it? Was it enjoyable?"
 
     state["response"] = message
     return state
@@ -137,3 +137,25 @@ def answer_analysis_node(db_session_factory: Callable[[], AsyncSession]):
         return state
 
     return _answer_analysis_node
+
+def incomplete_query_handler(db_session_factory: Callable[[], AsyncSession]):
+    async def _incomplete_query_handler(state: State):
+        async with db_session_factory() as db:
+            result = await db.execute(
+                select(MentionedGame)
+                .where(MentionedGame.user_id == state["user_id"])
+                .order_by(MentionedGame.mention_count.desc())
+                .limit(1)
+            )
+            most_mentioned_game = result.scalar_one_or_none()
+
+            if most_mentioned_game:
+                state["query"] = f"I want games similar to {most_mentioned_game.game_title}"
+                state["category"] = "most_mentioned_game"
+            else:
+                state["response"] = "I'm sorry, but your query is ambiguous, and I don't have any previous game mentions from you to work with. Could you please provide more specific information about the kind of game you're looking for?"
+                state["category"] = "no_most_mentioned_game"
+
+        return state
+
+    return _incomplete_query_handler
