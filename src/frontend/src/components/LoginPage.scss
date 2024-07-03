@@ -1,54 +1,66 @@
 .login-page {
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(10, 10, 10, 0.8);
-    position: relative;
-    z-index: 2;
-  
-    .MuiTypography-root {
-      margin-bottom: 2rem;
-    }
-  
-    .MuiTextField-root {
-      margin-bottom: 1rem;
-  
-      .MuiOutlinedInput-root {
-        color: #e0e0e0;
-        
-        fieldset {
-          border-color: #333;
-        }
-  
-        &:hover fieldset {
-          border-color: #555;
-        }
-  
-        &.Mui-focused fieldset {
-          border-color: #ff4d4d;
-        }
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(10, 10, 10, 0.8);
+  position: relative;
+  z-index: 2;
+
+  .MuiTypography-root {
+    margin-bottom: 2rem;
+  }
+
+  .MuiTextField-root {
+    margin-bottom: 1rem;
+
+    .MuiOutlinedInput-root {
+      color: #e0e0e0;
+      
+      fieldset {
+        border-color: #333;
       }
-  
-      .MuiInputLabel-root {
-        color: #888;
+
+      &:hover fieldset {
+        border-color: #555;
       }
-    }
-  
-    .MuiButton-contained {
-      background-color: #ff4d4d;
-      color: #fff;
-  
-      &:hover {
-        background-color: #ff3333;
+
+      &.Mui-focused fieldset {
+        border-color: #ff4d4d;
+      }
+
+      &.Mui-focused {
+        background-color: rgba(255, 77, 77, 0.1);
       }
     }
-  
-    .MuiButton-text {
+
+    .MuiInputLabel-root {
       color: #888;
-  
-      &:hover {
-        color: #ff4d4d;
-      }
     }
   }
+
+  .MuiButton-contained {
+    background-color: #ff4d4d;
+    color: #fff;
+
+    &:hover {
+      background-color: #ff3333;
+    }
+  }
+
+  .MuiLink-root {
+    color: #888;
+    text-decoration: none;
+
+    &:hover {
+      color: #ff4d4d;
+    }
+  }
+
+  .links-container {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 1rem;
+  }
+}

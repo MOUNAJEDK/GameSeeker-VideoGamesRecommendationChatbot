@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextField, Button, Typography, Container, Box } from '@mui/material';
+import { TextField, Button, Typography, Container, Box, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.scss';
 
@@ -84,13 +84,14 @@ const LoginPage = ({ setToken }) => {
           >
             Sign In
           </Button>
-          <Button
-            fullWidth
-            variant="text"
-            onClick={() => navigate('/register')}
-          >
-            Don't have an account? Sign Up
-          </Button>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+            <Link href="/forgot-password" variant="body2">
+              Forgot password?
+            </Link>
+            <Link href="/register" variant="body2">
+              Don't have an account? Sign Up
+            </Link>
+          </Box>
         </Box>
       </Box>
     </Container>

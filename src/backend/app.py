@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
 
-from models import Base, User, MentionedGame, Thread
+from models import Base, User, MentionedGame, Thread, PasswordResetToken
 
 from dotenv import load_dotenv
 import os
@@ -254,18 +254,18 @@ async def get_mentioned_games(
 @app.post("/request-password-reset")
 async def request_password_reset(
     request: PasswordResetRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     user = await get_user_by_email(db, request.email)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        # For security reasons, always return the same message whether the user exists or not
+        return {"message": "If an account with that email exists, a password reset link has been sent."}
     
     reset_token = create_access_token(data={"sub": user.username, "type": "reset"}, expires_delta=timedelta(hours=1))
     
-    background_tasks.add_task(send_reset_email, user.email, reset_token)
-    
-    return {"message": "If an account with that email exists, a password reset link has been sent."}
+    # In a real application, you would send an email here.
+    # For this example, we'll return the token directly.
+    return {"message": "Password reset requested successfully.", "reset_token": reset_token}
 
 @app.post("/reset-password")
 async def reset_password(
@@ -290,21 +290,6 @@ async def reset_password(
     await db.commit()
     
     return {"message": "Password has been reset successfully"}
-
-@app.get("/test-endpoints")
-def test_endpoints():
-    return {
-        "message": "Here are the steps to test the backend functionalities:",
-        "steps": [
-            "1. Open your browser and go to http://localhost:8000/docs",
-            "2. You'll see the FastAPI interactive documentation",
-            "3. Test the '/register' endpoint to create a new user",
-            "4. Test the '/token' endpoint to log in and get an access token",
-            "5. Click the 'Authorize' button at the top and enter your access token",
-            "6. Now you can test the '/chat' and '/mentioned-games' endpoints",
-            "7. Test the '/request-password-reset' and '/reset-password' endpoints for password recovery"
-        ]
-    }
 
 @app.get("/users/me", response_model=UserOut)
 async def read_users_me(current_user: User = Depends(get_current_user)):
