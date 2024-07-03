@@ -82,9 +82,9 @@ def game_details_scrape_node(state: State):
     return state
 
 def games_recommendation_result_node(state: State):
-    message = "🔎Upon analyzing your query, I've come up with the following game recommendations for you:\n\n🔎"
+    message = "🔎Upon analyzing your query, I've come up with the following game recommendations for you:🔎\n\n"
 
-    message = "🎮 **Top Recommended Games for You:** 🎮\n"
+    message += "🎮 **Top Recommended Games for You:** 🎮\n"
     for game in state["games"]:
         message += f"    • 🕹️ **{game}**\n"
 
@@ -108,7 +108,7 @@ def answer_analysis_node(db_session_factory: Callable[[], AsyncSession]):
     async def _answer_analysis_node(state: State):
         analysis_result = answer_analysis.invoke({"response": state["query"]})
         state["for_user"] = analysis_result == "for_user"
-        state["response"] = "for_user" if state["for_user"] else "for_other"
+        state["response"] = "Oh, that's lovely to hear! Glad you're enjoying it!" if state["for_user"] else "Oh, that's lovely to hear! Glad they're enjoying it!"
         
         if state["for_user"]:
             async with db_session_factory() as db:

@@ -26,8 +26,10 @@ query_classification_prompt = ChatPromptTemplate.from_messages(
                 - Example: "What's your objective?"
 
             4. 'incomplete' - Queries that are too vague or ambiguous.
-                - Example: "Can you help me?"
-                - Example: "I need some recommendations."
+                - Example: "I want to play something."
+                - Example: "Give me some suggestions."
+                - Example: "What should I play?"
+                - Example: "Recommend me something."
 
             5. 'expressing_interest' - Responses expressing interest or experience with a game.
                 - Example: "Yes, I love Minecraft!"
