@@ -1,11 +1,11 @@
 import asyncio
 import nest_asyncio
 import markdown2
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, Request
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field, validator
 from typing import List, Optional
 from langchain_core.messages import HumanMessage
 from langgraph_logic.graph import create_graph
@@ -15,8 +15,15 @@ from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
+from email_validator import validate_email, EmailNotValidError
+import secrets
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+import re
 
-from models import Base, User, MentionedGame, Thread, PasswordResetToken
+from models import Base, User, MentionedGame, Thread, PasswordResetToken, RefreshToken, VerificationKey
 
 from dotenv import load_dotenv
 import os
@@ -53,12 +60,30 @@ app = FastAPI(
     description="An API server to provide personalized video game recommendations."
 )
 
+# Rate limiting setup
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Email configuration
+mail_config = ConnectionConfig(
+    MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
+    MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
+    MAIL_FROM=os.getenv('MAIL_FROM'),
+    MAIL_PORT=int(os.getenv('MAIL_PORT')),
+    MAIL_SERVER=os.getenv('MAIL_SERVER'),
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False,
+    USE_CREDENTIALS=True,
+    VALIDATE_CERTS=True
 )
 
 # Dependency to get the database session
@@ -72,7 +97,7 @@ async def get_db():
 # Create the graph with the database session factory
 graph = None
 
-# Authentication functions
+# Helper functions
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -97,6 +122,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def create_refresh_token(user_id: int):
+    token = secrets.token_urlsafe(32)
+    expires = datetime.utcnow() + timedelta(days=30)
+    return RefreshToken(user_id=user_id, token=token, expires_at=expires)
+
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=401,
@@ -115,15 +145,49 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         raise credentials_exception
     return user
 
+async def send_email_async(subject: str, email_to: str, body: str):
+    message = MessageSchema(
+        subject=subject,
+        recipients=[email_to],
+        body=body,
+        subtype="html"
+    )
+    
+    fm = FastMail(mail_config)
+    await fm.send_message(message)
+
 # Pydantic models
 class UserCreate(BaseModel):
-    username: str
-    email: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=20)
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    verification_key: str
+
+    @validator('username')
+    def username_alphanumeric(cls, v):
+        if not re.match(r'^[a-zA-Z0-9_]+$', v):
+            raise ValueError('Username must only contain letters, numbers, and underscores')
+        return v
+
+    @validator('password')
+    def password_strength(cls, v):
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r'\d', v):
+            raise ValueError('Password must contain at least one number')
+        if not re.search(r'\W', v):
+            raise ValueError('Password must contain at least one special character')
+        return v
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
 
 class Input(BaseModel):
     input: str
@@ -133,11 +197,11 @@ class Output(BaseModel):
     output: List[str]
 
 class PasswordResetRequest(BaseModel):
-    email: str
+    email: EmailStr
 
 class PasswordReset(BaseModel):
     token: str
-    new_password: str
+    new_password: str = Field(..., min_length=8)
 
 class UserOut(BaseModel):
     username: str
@@ -146,44 +210,54 @@ class UserOut(BaseModel):
 class ThreadResponse(BaseModel):
     thread_id: str
 
-# Helper functions
-def format_message(content: str) -> str:
-    html_content = markdown2.markdown(content)
-    html_content = html_content.replace('\n', '<br>')
-    return html_content
-
-def send_reset_email(email: str, token: str):
-    # In a real application, you would send an actual email.
-    # For this example, we'll just print the token.
-    print(f"Password reset token for {email}: {token}")
-
 # Routes
 @app.post("/register", response_model=Token)
-async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(request: Request, user: UserCreate, db: AsyncSession = Depends(get_db)):
+    # Verify the key
+    db_key = await db.execute(select(VerificationKey).filter(VerificationKey.email == user.email, VerificationKey.key == user.verification_key, VerificationKey.expires_at > datetime.utcnow()))
+    db_key = db_key.scalar_one_or_none()
+    if not db_key:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification key")
+    
+    # Proceed with user registration
     db_user = await get_user(db, user.username)
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
+    
+    db_user = await get_user_by_email(db, user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
     hashed_password = get_password_hash(user.password)
     new_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
     db.add(new_user)
+    
+    # Delete the used verification key
+    await db.delete(db_key)
+    
     await db.commit()
     await db.refresh(new_user)
+    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    refresh_token = create_refresh_token(new_user.id)
+    db.add(refresh_token)
+    await db.commit()
+    return {"access_token": access_token, "refresh_token": refresh_token.token, "token_type": "bearer"}
 
 @app.post("/token", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     user = await get_user(db, form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    refresh_token = create_refresh_token(user.id)
+    db.add(refresh_token)
+    await db.commit()
+    return {"access_token": access_token, "refresh_token": refresh_token.token, "token_type": "bearer"}
 
 @app.get("/")
 async def redirect_root_to_docs():
@@ -219,7 +293,8 @@ async def chat_endpoint(
     }
 
     output = await graph.ainvoke(state, config=config)
-    formatted_output = format_message(output["response"])
+    formatted_output = markdown2.markdown(output["response"])
+    formatted_output = formatted_output.replace('\n', '<br>')
 
     return {"output": [formatted_output]}
 
@@ -252,20 +327,40 @@ async def get_mentioned_games(
     return [game.game_title for game in games]
 
 @app.post("/request-password-reset")
+@limiter.limit("3/hour")
 async def request_password_reset(
-    request: PasswordResetRequest,
+    request: Request,
+    reset_request: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
-    user = await get_user_by_email(db, request.email)
+    user = await get_user_by_email(db, reset_request.email)
     if not user:
         # For security reasons, always return the same message whether the user exists or not
         return {"message": "If an account with that email exists, a password reset link has been sent."}
     
     reset_token = create_access_token(data={"sub": user.username, "type": "reset"}, expires_delta=timedelta(hours=1))
     
-    # In a real application, you would send an email here.
-    # For this example, we'll return the token directly.
-    return {"message": "Password reset requested successfully.", "reset_token": reset_token}
+    # Store the reset token in the database
+    db_token = PasswordResetToken(user_id=user.id, token=reset_token, expires_at=datetime.utcnow() + timedelta(hours=1))
+    db.add(db_token)
+    await db.commit()
+    
+    reset_link = f"http://localhost:3000/reset-password?token={reset_token}"
+    email_body = f"""
+    <html>
+        <body>
+            <h2>Password Reset Request</h2>
+            <p>You have requested to reset your password. Click the link below to set a new password:</p>
+            <p><a href="{reset_link}">Reset Password</a></p>
+            <p>If you didn't request this, please ignore this email.</p>
+            <p>This link will expire in 1 hour.</p>
+        </body>
+    </html>
+    """
+    background_tasks.add_task(send_email_async, "Password Reset Request", user.email, email_body)
+    
+    return {"message": "If an account with that email exists, a password reset link has been sent."}
 
 @app.post("/reset-password")
 async def reset_password(
@@ -286,14 +381,77 @@ async def reset_password(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     
+    # Verify that the token exists in the database and hasn't expired
+    db_token = await db.execute(select(PasswordResetToken).filter(PasswordResetToken.token == reset_data.token, PasswordResetToken.expires_at > datetime.utcnow()))
+    db_token = db_token.scalar_one_or_none()
+    if not db_token:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    
     user.hashed_password = get_password_hash(reset_data.new_password)
+    db.delete(db_token)  # Remove the used token
     await db.commit()
     
     return {"message": "Password has been reset successfully"}
 
+@app.post("/refresh-token", response_model=Token)
+async def refresh_token(token: str, db: AsyncSession = Depends(get_db)):
+    db_token = await db.execute(select(RefreshToken).filter(RefreshToken.token == token, RefreshToken.expires_at > datetime.utcnow()))
+    db_token = db_token.scalar_one_or_none()
+    if not db_token:
+        raise HTTPException(status_code=400, detail="Invalid or expired refresh token")
+    user = await db.get(User, db_token.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    new_refresh_token = create_refresh_token(user.id)
+    db.delete(db_token)
+    db.add(new_refresh_token)
+    await db.commit()
+    return {"access_token": access_token, "refresh_token": new_refresh_token.token, "token_type": "bearer"}
+
 @app.get("/users/me", response_model=UserOut)
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return UserOut(username=current_user.username, email=current_user.email)
+
+class EmailRequest(BaseModel):
+    email: EmailStr
+
+@app.post("/request-verification-key")
+@limiter.limit("3/hour")
+async def request_verification_key(
+    request: Request,
+    email_request: EmailRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    # Check if email already exists
+    user = await get_user_by_email(db, email_request.email)
+    if user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Generate a verification key
+    key = secrets.token_urlsafe(8)  # 8-character key
+    expires_at = datetime.utcnow() + timedelta(hours=1)
+    
+    # Store the key in the database
+    db_key = VerificationKey(email=email_request.email, key=key, expires_at=expires_at)
+    db.add(db_key)
+    await db.commit()
+    
+    # Send the key via email
+    email_body = f"""
+    <html>
+        <body>
+            <h2>Email Verification for GameSeeker AI</h2>
+            <p>Your verification key is: <strong>{key}</strong></p>
+            <p>This key will expire in 1 hour.</p>
+        </body>
+    </html>
+    """
+    background_tasks.add_task(send_email_async, "Email Verification", email_request.email, email_body)
+    
+    return {"message": "Verification key has been sent to your email."}
 
 @app.on_event("startup")
 async def startup():

@@ -27,6 +27,7 @@ const LoginPage = ({ setToken }) => {
       if (response.ok) {
         setToken(data.access_token);
         localStorage.setItem('token', data.access_token);
+        localStorage.setItem('refreshToken', data.refresh_token);
         navigate('/chat');
       } else {
         setError(data.detail || 'Login failed');

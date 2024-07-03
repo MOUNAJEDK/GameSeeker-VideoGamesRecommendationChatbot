@@ -41,7 +41,7 @@ def query_classification_node(state: State):
 
 def game_extraction_node(state: State):
     extracted_game = game_extraction.invoke({"query": state["query"]})
-    state["extracted_game"] = extracted_game
+    state["extracted_game"] = extracted_game.title()
     return state
 
 def game_title_search_node(state: State):
@@ -82,6 +82,8 @@ def game_details_scrape_node(state: State):
     return state
 
 def games_recommendation_result_node(state: State):
+    message = "🔎Upon analyzing your query, I've come up with the following game recommendations for you:\n\n🔎"
+
     message = "🎮 **Top Recommended Games for You:** 🎮\n"
     for game in state["games"]:
         message += f"    • 🕹️ **{game}**\n"

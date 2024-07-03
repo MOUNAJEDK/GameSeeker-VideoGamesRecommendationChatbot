@@ -55,4 +55,18 @@
       color: #ff4d4d;
     }
   }
+
+  .error-message {
+    color: #ff4d4d; // A brighter red for errors
+    margin-bottom: 1rem;
+  }
+
+  .verification-message {
+    margin-bottom: 1rem;
+    font-weight: 500;
+  }
+
+  .gameseeker-ai-text {
+    color: #ff4d4d; // Your existing accent color
+  }
 }

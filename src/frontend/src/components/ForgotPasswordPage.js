@@ -24,13 +24,6 @@ const ForgotPasswordPage = () => {
       if (response.ok) {
         setMessage(data.message);
         setIsSubmitted(true);
-        // In a real application, you wouldn't expose the token to the user.
-        // This is just for demonstration purposes.
-        if (data.reset_token) {
-          setTimeout(() => {
-            navigate(`/reset-password?token=${data.reset_token}`);
-          }, 3000);
-        }
       } else {
         setMessage(data.detail || 'An error occurred. Please try again.');
       }
