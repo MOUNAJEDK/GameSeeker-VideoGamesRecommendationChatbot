@@ -2,11 +2,10 @@ from typing import Callable
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from scrapegraphai.graphs import SmartScraperGraph
-
+from langchain_core.messages import HumanMessage
 from langgraph_logic.utils import GRAPH_CONFIG
 from langgraph_logic.chains import query_classification, game_title_search, rawg_io_link, game_extraction, answer_analysis
 from langgraph_logic.state import State
-
 import json
 import sys
 import os
@@ -17,6 +16,10 @@ sys.path.append(parent_dir)
 from models import MentionedGame
 
 def query_classification_node(state: State):
+    if state["messages"]:
+        state["messages"].clear()
+    state["messages"] = [HumanMessage(content=state["query"])]
+
     query_classification_output = query_classification.invoke({"query": state["query"], "messages": state["messages"]})
 
     if query_classification_output.lower().strip() == "relevant":
@@ -153,7 +156,13 @@ def incomplete_query_handler(db_session_factory: Callable[[], AsyncSession]):
 
             if most_mentioned_game:
                 state["query"] = f"I want games similar to {most_mentioned_game.game_title}"
+                
+                if state["messages"]:
+                    state["messages"].clear()
+                state["messages"] = [HumanMessage(content=state["query"])]
+                
                 state["category"] = "most_mentioned_game"
+                state["extracted_game"] = most_mentioned_game.game_title
             else:
                 state["response"] = "I'm sorry, but your query is ambiguous, and I don't have any previous game mentions from you to work with. Could you please provide more specific information about the kind of game you're looking for?"
                 state["category"] = "no_most_mentioned_game"

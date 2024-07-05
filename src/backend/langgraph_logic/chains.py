@@ -1,6 +1,5 @@
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-
 from langgraph_logic.utils import LLM, GAME_TITLE_SEARCH_TOOL, RAWG_IO_LINK_TOOL
 
 query_classification_prompt = ChatPromptTemplate.from_messages(

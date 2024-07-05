@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field, validator
 from typing import List, Optional
-from langchain_core.messages import HumanMessage
 from langgraph_logic.graph import create_graph
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
@@ -15,20 +14,20 @@ from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
-from email_validator import validate_email, EmailNotValidError
-import secrets
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 import re
-
 from models import Base, User, MentionedGame, Thread, PasswordResetToken, RefreshToken, VerificationKey
-
+import secrets
+from langsmith import Client
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
+
+client = Client()
 
 # Setup asyncio for Windows
 if asyncio.get_event_loop().is_closed():
@@ -281,14 +280,13 @@ async def chat_endpoint(
     config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 50}
 
     state = {
-        "messages": [HumanMessage(content=user_input)],
         "query": user_input,
         "category": "",
         "games": [],
         "details": {},
         "links": [],
         "index": 0,
-        "response": [],
+        "response": "",
         "user_id": current_user.id,
     }
 
