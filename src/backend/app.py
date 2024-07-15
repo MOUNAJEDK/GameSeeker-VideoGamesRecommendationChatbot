@@ -42,7 +42,7 @@ else:
 nest_asyncio.apply()
 
 # Database setup
-DATABASE_URL = "sqlite+aiosqlite:///./users.db"
+DATABASE_URL = "sqlite+aiosqlite:///./db/users.db"
 engine = create_async_engine(DATABASE_URL)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

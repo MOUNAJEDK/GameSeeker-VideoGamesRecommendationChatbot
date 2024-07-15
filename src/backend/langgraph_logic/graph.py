@@ -7,7 +7,7 @@ from langgraph_logic.state import State
 from langgraph_logic.nodes import query_classification_node, game_title_search_node, rawg_io_link_node, game_details_scrape_node, games_recommendation_result_node, game_extraction_node, answer_analysis_node, incomplete_query_handler_node, recommended_game_inquiry_node, sentiment_analysis_node
 from langgraph_logic.utils import GAME_TITLE_SEARCH_TOOL, RAWG_IO_LINK_TOOL
 
-CHECKPOINT_DB_URL = "C:/Users/karim/OneDrive/Desktop/GameSeeker-VideoGamesRecommendationChatbot/GameSeeker-VideoGamesRecommendationChatbot/src/backend/checkpoints.db"
+CHECKPOINT_DB_URL = "C:/Users/karim/OneDrive/Desktop/GameSeeker-VideoGamesRecommendationChatbot/GameSeeker-VideoGamesRecommendationChatbot/src/backend/db/checkpoints.db"
 
 def create_graph(db_session_factory: Callable[[], AsyncSession]):
     checkpoint_saver = AsyncSqliteSaver.from_conn_string(CHECKPOINT_DB_URL)
