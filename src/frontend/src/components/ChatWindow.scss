@@ -12,19 +12,10 @@
   .navbar {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between;
     background-color: rgba(10, 10, 10, 0.8);
     padding: 1rem;
     border-bottom: none;
-
-    .new-chat-button {
-      margin-left: auto;
-      color: #ff4d4d;
-
-      &:hover {
-        background-color: rgba(255, 77, 77, 0.1);
-      }
-    }
 
     .navbar-title {
       margin: 0;
@@ -32,7 +23,6 @@
     }
 
     .logout-button {
-      margin-left: 1rem;
       color: #ff4d4d;
       border: 1px solid #ff4d4d;
       background-color: transparent;

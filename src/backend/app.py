@@ -275,6 +275,14 @@ async def chat_endpoint(
     user_input = input_data.input
     thread_id = input_data.thread_id
 
+    # If thread_id is empty, create a new thread
+    if not thread_id:
+        new_thread_id = f"user_{current_user.id}_{datetime.utcnow().timestamp()}"
+        new_thread = Thread(thread_id=new_thread_id, user_id=current_user.id)
+        db.add(new_thread)
+        await db.commit()
+        thread_id = new_thread_id
+
     # Verify that the thread belongs to the current user
     result = await db.execute(select(Thread).filter(Thread.thread_id == thread_id, Thread.user_id == current_user.id))
     thread = result.scalar_one_or_none()
@@ -292,24 +300,7 @@ async def chat_endpoint(
     formatted_output = markdown2.markdown(output["response"])
     formatted_output = formatted_output.replace('\n', '<br>')
 
-    return {"output": [formatted_output]}
-
-@app.post("/new-chat", response_model=ThreadResponse)
-async def new_chat(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    # Generate a new unique thread_id for the user
-    new_thread_id = f"user_{current_user.id}_{datetime.utcnow().timestamp()}"
-    
-    # Create a new Thread instance
-    new_thread = Thread(thread_id=new_thread_id, user_id=current_user.id)
-    
-    # Add the new thread to the database
-    db.add(new_thread)
-    await db.commit()
-    
-    return {"thread_id": new_thread_id}
+    return {"output": [formatted_output], "thread_id": thread_id}
 
 @app.get("/mentioned-games")
 async def get_mentioned_games(

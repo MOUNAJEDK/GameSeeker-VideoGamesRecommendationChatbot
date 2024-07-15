@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
-import { IconButton, Button } from '@mui/material';
-import { Add, ExitToApp } from '@mui/icons-material';
+import { Button } from '@mui/material';
+import { ExitToApp } from '@mui/icons-material';
 import './ChatWindow.scss';
 
 const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
@@ -12,6 +12,31 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
   const [username, setUsername] = useState('');
   const [threadId, setThreadId] = useState('');
   const navigate = useNavigate();
+
+  const handleInitialChat = useCallback(async () => {
+    try {
+      const response = await fetch('http://localhost:8000/chat', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ input: 'Hello', thread_id: '' }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setThreadId(data.thread_id);
+        updateUserMessages(username, [
+          { id: 1, text: 'Welcome to GameSeeker AI!', sender: 'bot' },
+          { id: 2, text: data.output[0], sender: 'bot' },
+        ]);
+      } else {
+        console.error('Failed to start a new chat');
+      }
+    } catch (error) {
+      console.error('Error starting a new chat:', error);
+    }
+  }, [token, username, updateUserMessages]);
 
   useEffect(() => {
     const fetchUsername = async () => {
@@ -25,7 +50,7 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
           const data = await response.json();
           setUsername(data.username);
           if (!userMessages[data.username]) {
-            handleNewChat();
+            handleInitialChat();
           }
         } else {
           throw new Error('Failed to fetch username');
@@ -39,7 +64,7 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
     };
 
     fetchUsername();
-  }, [token, setToken, navigate, userMessages, updateUserMessages]);
+  }, [token, setToken, navigate, userMessages, handleInitialChat]);
 
   const handleSendMessage = async (message) => {
     const newMessage = {
@@ -59,12 +84,15 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ input: message, thread_id: threadId }),
+        body: JSON.stringify({ input: message, thread_id: threadId || '' }),
       });
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
       const data = await response.json();
+      if (data.thread_id) {
+        setThreadId(data.thread_id);
+      }
       const botMessage = {
         id: updatedMessages.length + 1,
         text: '',
@@ -92,29 +120,6 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
     }
   };
 
-  const handleNewChat = async () => {
-    try {
-      const response = await fetch('http://localhost:8000/new-chat', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setThreadId(data.thread_id);
-        updateUserMessages(username, [
-          { id: 1, text: 'Welcome to GameSeeker AI!', sender: 'bot' },
-          { id: 2, text: 'How can I assist you with video game recommendations today?', sender: 'bot' },
-        ]);
-      } else {
-        console.error('Failed to start a new chat');
-      }
-    } catch (error) {
-      console.error('Error starting a new chat:', error);
-    }
-  };
-
   const handleLogout = () => {
     setToken('');
     localStorage.removeItem('token');
@@ -127,9 +132,6 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
         <h1 className="navbar-title">
           <span className="gameseeker-ai-text">GameSeeker AI</span>
         </h1>
-        <IconButton className="new-chat-button" onClick={handleNewChat}>
-          <Add />
-        </IconButton>
         <Button className="logout-button" onClick={handleLogout} startIcon={<ExitToApp />}>
           Logout
         </Button>
