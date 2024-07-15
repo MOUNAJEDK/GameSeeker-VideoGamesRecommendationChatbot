@@ -4,7 +4,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.aiosqlite import AsyncSqliteSaver
 from langgraph_logic.state import State
-from langgraph_logic.nodes import query_classification_node, game_title_search_node, rawg_io_link_node, game_details_scrape_node, games_recommendation_result_node, game_extraction_node, answer_analysis_node, incomplete_query_handler
+from langgraph_logic.nodes import query_classification_node, game_title_search_node, rawg_io_link_node, game_details_scrape_node, games_recommendation_result_node, game_extraction_node, answer_analysis_node, incomplete_query_handler_node, recommended_game_inquiry_node, sentiment_analysis_node
 from langgraph_logic.utils import GAME_TITLE_SEARCH_TOOL, RAWG_IO_LINK_TOOL
 
 CHECKPOINT_DB_URL = "C:/Users/karim/OneDrive/Desktop/GameSeeker-VideoGamesRecommendationChatbot/GameSeeker-VideoGamesRecommendationChatbot/src/backend/checkpoints.db"
@@ -26,13 +26,18 @@ def create_graph(db_session_factory: Callable[[], AsyncSession]):
     graph_builder.add_node("game_title_search_tool", game_title_search_tool_node)
     graph_builder.add_node("rawg_io_link_tool", rawg_io_link_tool_node)
     graph_builder.add_node("games_recommendation_result", games_recommendation_result_node)
-    graph_builder.add_node("incomplete_query_handler", incomplete_query_handler(db_session_factory))
+    graph_builder.add_node("incomplete_query_handler", incomplete_query_handler_node(db_session_factory))
+    graph_builder.add_node("recommended_game_inquiry", recommended_game_inquiry_node(db_session_factory))
+    graph_builder.add_node("sentiment_analysis", sentiment_analysis_node(db_session_factory))
 
     def query_router(state: State):
         if state["category"] == "relevant":
             return "game_extraction"
         elif state["category"] == "expressing_interest":
-            return "answer_analysis"
+            if state["node_to_sentiment_analysis"] == "game_recommendation_result_node":
+                return "answer_analysis"
+            elif state["node_to_sentiment_analysis"] == "recommended_game_inquiry_node":
+                return "sentiment_analysis"
         elif state["category"] == "incomplete":
             return "incomplete_query_handler"
         elif state["category"] == "no_most_mentioned_game":
@@ -42,7 +47,7 @@ def create_graph(db_session_factory: Callable[[], AsyncSession]):
         
     def incomplete_query_router(state: State):
         if state["category"] == "most_mentioned_game":
-            return "game_title_search"
+            return "recommended_game_inquiry"
         else:
             return END
 
@@ -64,6 +69,18 @@ def create_graph(db_session_factory: Callable[[], AsyncSession]):
                 return "increment"
             else:
                 return "end"
+            
+    def answer_analysis_router(state: State):
+        if state["for_user"]:
+            return "sentiment_analysis"
+        else:
+            return END
+        
+    def sentiment_analysis_router(state: State):
+        if state["node_to_sentiment_analysis"] == "recommended_game_inquiry_node":
+            return "game_title_search"
+        else:
+            return END
 
     graph_builder.add_conditional_edges("query_classification", query_router)
     graph_builder.add_conditional_edges("incomplete_query_handler", incomplete_query_router)
@@ -79,10 +96,11 @@ def create_graph(db_session_factory: Callable[[], AsyncSession]):
     )
 
     graph_builder.add_edge("game_extraction", "game_title_search")
-    graph_builder.add_edge("answer_analysis", END)
+    graph_builder.add_conditional_edges("answer_analysis", answer_analysis_router)
     graph_builder.add_edge("game_title_search_tool", "game_title_search")
     graph_builder.add_edge("rawg_io_link_tool", "rawg_io_link")
     graph_builder.add_edge("game_details_scrape", "games_recommendation_result")
+    graph_builder.add_conditional_edges("sentiment_analysis", sentiment_analysis_router)
 
     graph_builder.set_entry_point("query_classification")
     graph_builder.set_finish_point("games_recommendation_result")

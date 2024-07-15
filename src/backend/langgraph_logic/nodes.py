@@ -1,10 +1,11 @@
 from typing import Callable
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import func
 from sqlalchemy.future import select
 from scrapegraphai.graphs import SmartScraperGraph
 from langchain_core.messages import HumanMessage
 from langgraph_logic.utils import GRAPH_CONFIG
-from langgraph_logic.chains import query_classification, game_title_search, rawg_io_link, game_extraction, answer_analysis
+from langgraph_logic.chains import query_classification, game_title_search, rawg_io_link, game_extraction, answer_analysis, sentiment_analysis
 from langgraph_logic.state import State
 import json
 import sys
@@ -19,6 +20,9 @@ def query_classification_node(state: State):
     if state["messages"]:
         state["messages"].clear()
     state["messages"] = [HumanMessage(content=state["query"])]
+    state["index"] = 0
+    state["links"] = []
+    state["details"] = {}
 
     query_classification_output = query_classification.invoke({"query": state["query"], "messages": state["messages"]})
 
@@ -43,7 +47,7 @@ def query_classification_node(state: State):
     return state
 
 def game_extraction_node(state: State):
-    extracted_game = game_extraction.invoke({"query": state["query"]})
+    extracted_game = game_extraction.invoke({"query": state["query"], "messages": state["messages"]})
     state["extracted_game"] = extracted_game.title()
     return state
 
@@ -85,7 +89,7 @@ def game_details_scrape_node(state: State):
     return state
 
 def games_recommendation_result_node(state: State):
-    message = "🔎Upon analyzing your query, I've come up with the following game recommendations for you:🔎\n\n"
+    message ="🔎Upon analyzing your query, I've come up with the following game recommendations for you:🔎\n\n"
 
     message += "🎮 **Top Recommended Games for You:** 🎮\n"
     for game in state["games"]:
@@ -104,18 +108,23 @@ def games_recommendation_result_node(state: State):
     if state["category"] == "relevant":
         message += f"\n\nIf you don't mind me asking, have you played or are you still playing {state['extracted_game']}? And if so, how did you like it? Was it enjoyable?"
 
+    if state["node_to_sentiment_analysis"] == "recomended_game_inquiry_node":
+        state["response"] += message
     state["response"] = message
+
+    state["node_to_sentiment_analysis"] = "game_recommendation_result_node"
+
     return state
 
 def answer_analysis_node(db_session_factory: Callable[[], AsyncSession]):
     async def _answer_analysis_node(state: State):
-        analysis_result = answer_analysis.invoke({"response": state["query"]})
+        analysis_result = answer_analysis.invoke({"response": state["query"], "messages": state["messages"]})
         state["for_user"] = analysis_result == "for_user"
         state["response"] = "Oh, that's lovely to hear! Glad you're enjoying it!" if state["for_user"] else "Oh, that's lovely to hear! Glad they're enjoying it!"
         
         if state["for_user"]:
             async with db_session_factory() as db:
-                # Check if the game is already mentioned for this user
+                # Add or update the extracted game
                 result = await db.execute(
                     select(MentionedGame).where(
                         (MentionedGame.user_id == state["user_id"]) & 
@@ -127,24 +136,86 @@ def answer_analysis_node(db_session_factory: Callable[[], AsyncSession]):
                 if not existing_game:
                     new_mentioned_game = MentionedGame(
                         user_id=state["user_id"],
-                        game_title=state["extracted_game"]
+                        game_title=state["extracted_game"],
+                        sentiment_score=-1.0  # Default sentiment score
                     )
                     db.add(new_mentioned_game)
-                    state["response"] += f"\nI've noted your interest in {state['extracted_game']}."
+                    state["response"] += f"\nI've noted your interest in \"{state['extracted_game']}\"."
                 else:
                     existing_game.mention_count += 1
-                    state["response"] += f"\nI see you've mentioned {state['extracted_game']} again."
+                    state["response"] += f"\nI see you've mentioned \"{state['extracted_game']}\" again."
+
+                # Add recommended games
+                for game in state["games"]:
+                    result = await db.execute(
+                        select(MentionedGame).where(
+                            (MentionedGame.user_id == state["user_id"]) & 
+                            (MentionedGame.game_title == game)
+                        )
+                    )
+                    existing_game = result.scalar_one_or_none()
+                    
+                    if not existing_game:
+                        new_mentioned_game = MentionedGame(
+                            user_id=state["user_id"],
+                            game_title=game,
+                            sentiment_score=-1.0  # Default sentiment score
+                        )
+                        db.add(new_mentioned_game)
+                    else:
+                        existing_game.mention_count += 1
+
+                state["response"] += f"\nI've also noted the recommended games based on your interests."
                 
                 await db.commit()
         else:
-            state["response"] += f"\nI understand that you're asking about {state['extracted_game']} for someone else."
+            state["response"] += f"\nI understand that you're asking about \"{state['extracted_game']}\" for someone else."
         
         return state
 
     return _answer_analysis_node
 
-def incomplete_query_handler(db_session_factory: Callable[[], AsyncSession]):
-    async def _incomplete_query_handler(state: State):
+def sentiment_analysis_node(db_session_factory: Callable[[], AsyncSession]):
+    async def _sentiment_analysis_node(state: State):
+        sentiment_score = float(sentiment_analysis.invoke({"query": state["query"], "messages": state["messages"]}))
+
+        if state["node_to_sentiment_analysis"] == "game_recommendation_result_node":
+            async with db_session_factory() as db:
+                result = await db.execute(
+                    select(MentionedGame).where(
+                        (MentionedGame.user_id == state["user_id" ]) &
+                        (MentionedGame.game_title == state["extracted_game"])
+                    )
+                )
+                existing_game = result.scalar_one_or_none()
+                existing_game.sentiment_score = sentiment_score
+
+                await db.commit()
+        elif state["node_to_sentiment_analysis"] == "recommended_game_inquiry_node":
+            async with db_session_factory() as db:
+                result = await db.execute(
+                    select(MentionedGame).where(
+                        (MentionedGame.user_id == state["user_id" ]) &
+                        (MentionedGame.game_title == state["recommended_game"])
+                    )
+                )
+                existing_game = result.scalar_one_or_none()
+                existing_game.sentiment_score = sentiment_score
+                state["query"] = state["query"] = f"I want games similar to {state["extracted_game"]}"
+                if state["messages"]:
+                    state["messages"].clear()
+                state["messages"] = [HumanMessage(content=state["query"])]
+                state["response"] = "Thank you for your feedback! I've noted it down.\n\n"
+                state["games"] = []
+
+                await db.commit()
+
+        return state
+    
+    return _sentiment_analysis_node
+
+def incomplete_query_handler_node(db_session_factory: Callable[[], AsyncSession]):
+    async def _incomplete_query_handler_node(state: State):
         async with db_session_factory() as db:
             result = await db.execute(
                 select(MentionedGame)
@@ -163,10 +234,37 @@ def incomplete_query_handler(db_session_factory: Callable[[], AsyncSession]):
                 
                 state["category"] = "most_mentioned_game"
                 state["extracted_game"] = most_mentioned_game.game_title
+                state["response"] = "Sure! I can help you with that. I'll look for games similar to the ones you've mentioned before. 🕵️‍♂️"
             else:
                 state["response"] = "I'm sorry, but your query is ambiguous, and I don't have any previous game mentions from you to work with. Could you please provide more specific information about the kind of game you're looking for?"
                 state["category"] = "no_most_mentioned_game"
 
         return state
 
-    return _incomplete_query_handler
+    return _incomplete_query_handler_node
+
+def recommended_game_inquiry_node(db_session_factory: Callable[[], AsyncSession]):
+    async def _recommended_game_inquiry_node(state: State):
+        async with db_session_factory() as db:
+            # Query for a game that meets our criteria
+            query = select(MentionedGame).where(
+                (MentionedGame.user_id == state["user_id"]) &
+                (MentionedGame.game_title != state["extracted_game"]) &
+                (MentionedGame.sentiment_score == -1)
+            ).order_by(func.random()).limit(1)
+
+            result = await db.execute(query)
+            recommended_game = result.scalar_one_or_none()
+
+            if recommended_game:
+                state["response"] += f"\nOh, by the way! I've previously recommended you this game, \"{recommended_game.game_title}\". If you don't mind me asking, how did you like it?"
+                state["inquiry_next_node"] = "sentiment_analysis_node"
+                state["node_to_sentiment_analysis"] = "recommended_game_inquiry_node"
+                state["recommended_game"] = recommended_game.game_title
+            else:
+                state["inquiry_next_node"] = "game_title_search_node"
+
+
+        return state
+    
+    return _recommended_game_inquiry_node

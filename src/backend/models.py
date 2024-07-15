@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -23,6 +23,7 @@ class MentionedGame(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     game_title = Column(String, index=True)
     mention_count = Column(Integer, default=1)
+    sentiment_score = Column(Float, default=-1.0)  # New column
 
     user = relationship("User", back_populates="mentioned_games")
 

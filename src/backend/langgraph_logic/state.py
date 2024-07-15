@@ -13,3 +13,6 @@ class State(TypedDict):
     response: str
     user_id: int
     extracted_game: str
+    inquiry_next_node: str
+    node_to_sentiment_analysis: str
+    recommended_game: str
