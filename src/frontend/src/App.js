@@ -9,10 +9,13 @@ import './App.scss';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
-  const [userMessages, setUserMessages] = useState({});
+  const [isValidating, setIsValidating] = useState(true);
+  const [userMessages, setUserMessages] = useState(() => {
+    return JSON.parse(localStorage.getItem('all_chat_messages') || '{}');
+  });
 
   useEffect(() => {
-    const checkToken = async () => {
+    const validateToken = async () => {
       if (token) {
         try {
           const response = await fetch('http://localhost:8000/users/me', {
@@ -25,21 +28,27 @@ function App() {
             localStorage.removeItem('token');
           }
         } catch (error) {
-          console.error('Error checking token:', error);
+          console.error('Error validating token:', error);
           setToken('');
           localStorage.removeItem('token');
         }
       }
+      setIsValidating(false);
     };
-    checkToken();
+    validateToken();
   }, [token]);
 
   const updateUserMessages = (username, messages) => {
-    setUserMessages(prevState => ({
-      ...prevState,
-      [username]: messages
-    }));
+    setUserMessages(prevState => {
+      const newState = { ...prevState, [username]: messages };
+      localStorage.setItem('all_chat_messages', JSON.stringify(newState));
+      return newState;
+    });
   };
+
+  if (isValidating) {
+    return <div>Loading...</div>; // Or a more sophisticated loading component
+  }
 
   return (
     <Router>
@@ -51,8 +60,8 @@ function App() {
         </div>
         <div className="content">
           <Routes>
-            <Route path="/login" element={<LoginPage setToken={setToken} />} />
-            <Route path="/register" element={<RegisterPage setToken={setToken} />} />
+            <Route path="/login" element={token ? <Navigate to="/chat" /> : <LoginPage setToken={setToken} />} />
+            <Route path="/register" element={token ? <Navigate to="/chat" /> : <RegisterPage setToken={setToken} />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route 
@@ -68,7 +77,7 @@ function App() {
                 <Navigate to="/login" />
               } 
             />
-            <Route path="*" element={<Navigate to="/chat" />} />
+            <Route path="*" element={token ? <Navigate to="/chat" /> : <Navigate to="/login" />} />
           </Routes>
         </div>
       </div>

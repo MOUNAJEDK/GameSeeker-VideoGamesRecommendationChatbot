@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
@@ -12,8 +12,27 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
   const [username, setUsername] = useState('');
   const [threadId, setThreadId] = useState('');
   const navigate = useNavigate();
+  const initialChatExecuted = useRef(false);
+
+  const saveMessagesToLocalStorage = useCallback((messages) => {
+    if (username) {
+      const allMessages = JSON.parse(localStorage.getItem('all_chat_messages') || '{}');
+      allMessages[username] = messages;
+      localStorage.setItem('all_chat_messages', JSON.stringify(allMessages));
+    }
+  }, [username]);
+
+  const loadMessagesFromLocalStorage = useCallback(() => {
+    if (username) {
+      const allMessages = JSON.parse(localStorage.getItem('all_chat_messages') || '{}');
+      return allMessages[username] || null;
+    }
+    return null;
+  }, [username]);
 
   const handleInitialChat = useCallback(async () => {
+    if (initialChatExecuted.current || !username) return;
+
     try {
       const response = await fetch('http://localhost:8000/chat', {
         method: 'POST',
@@ -26,17 +45,20 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
       if (response.ok) {
         const data = await response.json();
         setThreadId(data.thread_id);
-        updateUserMessages(username, [
+        const initialMessages = [
           { id: 1, text: 'Welcome to GameSeeker AI!', sender: 'bot' },
           { id: 2, text: data.output[0], sender: 'bot' },
-        ]);
+        ];
+        updateUserMessages(username, initialMessages);
+        saveMessagesToLocalStorage(initialMessages);
+        initialChatExecuted.current = true;
       } else {
         console.error('Failed to start a new chat');
       }
     } catch (error) {
       console.error('Error starting a new chat:', error);
     }
-  }, [token, username, updateUserMessages]);
+  }, [token, username, updateUserMessages, saveMessagesToLocalStorage]);
 
   useEffect(() => {
     const fetchUsername = async () => {
@@ -49,9 +71,6 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
         if (response.ok) {
           const data = await response.json();
           setUsername(data.username);
-          if (!userMessages[data.username]) {
-            handleInitialChat();
-          }
         } else {
           throw new Error('Failed to fetch username');
         }
@@ -64,9 +83,23 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
     };
 
     fetchUsername();
-  }, [token, setToken, navigate, userMessages, handleInitialChat]);
+  }, [token, setToken, navigate]);
+
+  useEffect(() => {
+    if (username && !initialChatExecuted.current) {
+      const savedMessages = loadMessagesFromLocalStorage();
+      if (savedMessages) {
+        updateUserMessages(username, savedMessages);
+        initialChatExecuted.current = true;
+      } else if (!userMessages[username]) {
+        handleInitialChat();
+      }
+    }
+  }, [username, userMessages, loadMessagesFromLocalStorage, updateUserMessages, handleInitialChat]);
 
   const handleSendMessage = async (message) => {
+    if (!username) return;
+
     const newMessage = {
       id: (userMessages[username] || []).length + 1,
       text: message,
@@ -74,6 +107,7 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
     };
     const updatedMessages = [...(userMessages[username] || []), newMessage];
     updateUserMessages(username, updatedMessages);
+    saveMessagesToLocalStorage(updatedMessages);
     setLoading(true);
     setIsResponding(true);
 
@@ -95,26 +129,15 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
       }
       const botMessage = {
         id: updatedMessages.length + 1,
-        text: '',
+        text: data.output[0],
         sender: 'bot',
       };
-      updateUserMessages(username, [...updatedMessages, botMessage]);
-      setLoading(false);
-
-      // Simulate typing effect
-      let index = 0;
-      const interval = setInterval(() => {
-        if (index < data.output[0].length) {
-          botMessage.text += data.output[0][index];
-          updateUserMessages(username, [...updatedMessages, botMessage]);
-          index++;
-        } else {
-          clearInterval(interval);
-          setIsResponding(false);
-        }
-      }, 5);  // Faster typing effect
+      const newUpdatedMessages = [...updatedMessages, botMessage];
+      updateUserMessages(username, newUpdatedMessages);
+      saveMessagesToLocalStorage(newUpdatedMessages);
     } catch (error) {
       console.error('Error fetching response from the backend:', error);
+    } finally {
       setLoading(false);
       setIsResponding(false);
     }
