@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
-import { Button } from '@mui/material';
-import { ExitToApp } from '@mui/icons-material';
+import { IconButton, Tooltip } from '@mui/material';
+import { LogoutOutlined, DeleteSweep } from '@mui/icons-material';
 import './ChatWindow.scss';
 
 const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
@@ -149,15 +149,31 @@ const ChatWindow = ({ token, setToken, userMessages, updateUserMessages }) => {
     navigate('/login');
   };
 
+  const handleClearChat = () => {
+    updateUserMessages(username, []);
+    saveMessagesToLocalStorage([]);
+    initialChatExecuted.current = false;
+    handleInitialChat();
+  };
+
   return (
     <div className="chat-window">
       <nav className="navbar">
         <h1 className="navbar-title">
           <span className="gameseeker-ai-text">GameSeeker AI</span>
         </h1>
-        <Button className="logout-button" onClick={handleLogout} startIcon={<ExitToApp />}>
-          Logout
-        </Button>
+        <div className="navbar-actions">
+          <Tooltip title="Clear Chat">
+            <IconButton onClick={handleClearChat} className="clear-chat-button">
+              <DeleteSweep style={{ color: '#ff4d4d' }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Logout">
+            <IconButton onClick={handleLogout} className="logout-button">
+              <LogoutOutlined style={{ color: '#ff4d4d' }} />
+            </IconButton>
+          </Tooltip>
+        </div>
       </nav>
       <MessageList messages={userMessages[username] || []} loading={loading} />
       <MessageInput onSendMessage={handleSendMessage} disabled={isResponding} />
