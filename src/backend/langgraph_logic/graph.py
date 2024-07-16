@@ -86,6 +86,12 @@ def create_graph(db_session_factory: Callable[[], AsyncSession]):
             return "game_title_search"
         else:
             return END
+        
+    def recommended_game_inquiry_router(state: State):
+        if state["inquiry_next_node"] == "game_title_search":
+            return "game_title_search"
+        else:
+            return END
 
     graph_builder.add_conditional_edges("query_classification", query_router)
     graph_builder.add_conditional_edges("incomplete_query_handler", incomplete_query_router)
@@ -106,6 +112,7 @@ def create_graph(db_session_factory: Callable[[], AsyncSession]):
     graph_builder.add_edge("rawg_io_link_tool", "rawg_io_link")
     graph_builder.add_edge("game_details_scrape", "games_recommendation_result")
     graph_builder.add_conditional_edges("sentiment_analysis", sentiment_analysis_router)
+    graph_builder.add_conditional_edges("recommended_game_inquiry", recommended_game_inquiry_router)
 
     graph_builder.set_entry_point("query_classification")
     graph_builder.set_finish_point("games_recommendation_result")

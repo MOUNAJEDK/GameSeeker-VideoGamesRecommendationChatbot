@@ -16,3 +16,4 @@ class State(TypedDict):
     inquiry_next_node: str
     node_to_sentiment_analysis: str
     recommended_game: str
+    for_user: bool
