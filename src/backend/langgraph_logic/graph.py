@@ -12,7 +12,7 @@ from langgraph_logic.nodes import (
 )
 from langgraph_logic.utils import GAME_TITLE_SEARCH_TOOL, RAWG_IO_LINK_TOOL
 
-CHECKPOINT_DB_URL = "C:/Users/karim/OneDrive/Desktop/GameSeeker-VideoGamesRecommendationChatbot/GameSeeker-VideoGamesRecommendationChatbot/src/backend/db/checkpoints.db"
+CHECKPOINT_DB_URL = "C:/Users/karim/Desktop/GameSeeker-VideoGamesRecommendationChatbot/src/backend/db/checkpoints.db"
 
 def create_graph(db_session_factory: Callable[[], AsyncSession]):
     checkpoint_saver = AsyncSqliteSaver.from_conn_string(CHECKPOINT_DB_URL)
@@ -86,6 +86,12 @@ def create_graph(db_session_factory: Callable[[], AsyncSession]):
             return "game_title_search"
         else:
             return END
+        
+    def recommended_game_inquiry_router(state: State):
+        if state["inquiry_next_node"] == "sentiment_analysis_node":
+            return END
+        else:
+            return "game_title_search"
 
     graph_builder.add_conditional_edges("query_classification", query_router)
     graph_builder.add_conditional_edges("incomplete_query_handler", incomplete_query_router)
@@ -106,6 +112,7 @@ def create_graph(db_session_factory: Callable[[], AsyncSession]):
     graph_builder.add_edge("rawg_io_link_tool", "rawg_io_link")
     graph_builder.add_edge("game_details_scrape", "games_recommendation_result")
     graph_builder.add_conditional_edges("sentiment_analysis", sentiment_analysis_router)
+    graph_builder.add_conditional_edges("recommended_game_inquiry", recommended_game_inquiry_router)
 
     graph_builder.set_entry_point("query_classification")
     graph_builder.set_finish_point("games_recommendation_result")
