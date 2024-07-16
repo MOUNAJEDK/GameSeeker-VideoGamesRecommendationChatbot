@@ -1,6 +1,7 @@
 # Python cache files
 __pycache__/
 *.py[cod]
+*$py.class
 
 # Virtual environment
 .venv/
@@ -8,6 +9,9 @@ __pycache__/
 # Database
 *.db
 *.sqlite3
+backend/db/*.db
+backend/db/*.db-shm
+backend/db/*.db-wal
 
 # Logs
 *.log
@@ -26,6 +30,7 @@ Thumbs.db
 # Configuration files with sensitive information
 config.ini
 secrets.json
+.env
 
 # Dependency directories
 node_modules/
@@ -41,18 +46,25 @@ build/
 # pyenv
 .python-version
 
-# dotenv environment variables file
-.env
-
 # FastAPI specific
 .fastapi_cache/
 
-# Checkpoint database
-db/checkpoints.db
+# Frontend build
+frontend/build/
 
-# Users database
-db/users.db
+# Poetry
+poetry.lock
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
 
 # Any other sensitive or environment-specific files
 *.pem
 *.key
+
+# Specific to your project
+backend/db/checkpoints.db
+backend/db/users.db
