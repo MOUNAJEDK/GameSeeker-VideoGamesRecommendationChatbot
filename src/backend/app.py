@@ -33,7 +33,6 @@ os.environ["LANGCHAIN_TRACING_V2"] = "true"
 
 client = Client()
 
-# Setup asyncio for Windows
 if asyncio.get_event_loop().is_closed():
     asyncio.set_event_loop(asyncio.ProactorEventLoop())
 else:
@@ -41,12 +40,10 @@ else:
 
 nest_asyncio.apply()
 
-# Database setup
 DATABASE_URL = "sqlite+aiosqlite:///./db/users.db"
 engine = create_async_engine(DATABASE_URL)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-# Security setup
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("No SECRET_KEY set for JWT. Please add it to .env file.")
@@ -56,14 +53,12 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# FastAPI app setup
 app = FastAPI(
     title="Video Game Recommendation Chatbot",
     version="1.0",
     description="An API server to provide personalized video game recommendations."
 )
 
-# Rate limiting setup
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -76,7 +71,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Email configuration
 mail_config = ConnectionConfig(
     MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
     MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
@@ -89,7 +83,6 @@ mail_config = ConnectionConfig(
     VALIDATE_CERTS=True
 )
 
-# Dependency to get the database session
 async def get_db():
     db = AsyncSessionLocal()
     try:
@@ -97,10 +90,8 @@ async def get_db():
     finally:
         await db.close()
 
-# Create the graph with the database session factory
 graph = None
 
-# Helper functions
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -117,13 +108,9 @@ async def get_user_by_email(db: AsyncSession, email: str):
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def create_refresh_token(user_id: int):
     token = secrets.token_urlsafe(32)
@@ -159,7 +146,6 @@ async def send_email_async(subject: str, email_to: str, body: str):
     fm = FastMail(mail_config)
     await fm.send_message(message)
 
-# Pydantic models
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=20)
     email: EmailStr
@@ -213,17 +199,17 @@ class UserOut(BaseModel):
 class ThreadResponse(BaseModel):
     thread_id: str
 
-# Routes
+class EmailRequest(BaseModel):
+    email: EmailStr
+
 @app.post("/register", response_model=Token)
 @limiter.limit("5/minute")
 async def register(request: Request, user: UserCreate, db: AsyncSession = Depends(get_db)):
-    # Verify the key
     db_key = await db.execute(select(VerificationKey).filter(VerificationKey.email == user.email, VerificationKey.key == user.verification_key, VerificationKey.expires_at > datetime.utcnow()))
     db_key = db_key.scalar_one_or_none()
     if not db_key:
         raise HTTPException(status_code=400, detail="Invalid or expired verification key")
     
-    # Proceed with user registration
     db_user = await get_user(db, user.username)
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -236,7 +222,6 @@ async def register(request: Request, user: UserCreate, db: AsyncSession = Depend
     new_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
     db.add(new_user)
     
-    # Delete the used verification key
     await db.delete(db_key)
     
     await db.commit()
@@ -275,7 +260,6 @@ async def chat_endpoint(
     user_input = input_data.input
     thread_id = input_data.thread_id
 
-    # If thread_id is empty, create a new thread
     if not thread_id:
         new_thread_id = f"user_{current_user.id}_{datetime.utcnow().timestamp()}"
         new_thread = Thread(thread_id=new_thread_id, user_id=current_user.id)
@@ -283,7 +267,6 @@ async def chat_endpoint(
         await db.commit()
         thread_id = new_thread_id
 
-    # Verify that the thread belongs to the current user
     result = await db.execute(select(Thread).filter(Thread.thread_id == thread_id, Thread.user_id == current_user.id))
     thread = result.scalar_one_or_none()
     if not thread:
@@ -323,12 +306,10 @@ async def request_password_reset(
 ):
     user = await get_user_by_email(db, reset_request.email)
     if not user:
-        # For security reasons, always return the same message whether the user exists or not
         return {"message": "If an account with that email exists, a password reset link has been sent."}
     
     reset_token = create_access_token(data={"sub": user.username, "type": "reset"}, expires_delta=timedelta(hours=1))
     
-    # Store the reset token in the database
     db_token = PasswordResetToken(user_id=user.id, token=reset_token, expires_at=datetime.utcnow() + timedelta(hours=1))
     db.add(db_token)
     await db.commit()
@@ -368,14 +349,13 @@ async def reset_password(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Verify that the token exists in the database and hasn't expired
     db_token = await db.execute(select(PasswordResetToken).filter(PasswordResetToken.token == reset_data.token, PasswordResetToken.expires_at > datetime.utcnow()))
     db_token = db_token.scalar_one_or_none()
     if not db_token:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
     
     user.hashed_password = get_password_hash(reset_data.new_password)
-    db.delete(db_token)  # Remove the used token
+    db.delete(db_token)
     await db.commit()
     
     return {"message": "Password has been reset successfully"}
@@ -401,9 +381,6 @@ async def refresh_token(token: str, db: AsyncSession = Depends(get_db)):
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return UserOut(username=current_user.username, email=current_user.email)
 
-class EmailRequest(BaseModel):
-    email: EmailStr
-
 @app.post("/request-verification-key")
 @limiter.limit("3/hour")
 async def request_verification_key(
@@ -412,21 +389,17 @@ async def request_verification_key(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
-    # Check if email already exists
     user = await get_user_by_email(db, email_request.email)
     if user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Generate a verification key
-    key = secrets.token_urlsafe(8)  # 8-character key
+    key = secrets.token_urlsafe(8)
     expires_at = datetime.utcnow() + timedelta(hours=1)
     
-    # Store the key in the database
     db_key = VerificationKey(email=email_request.email, key=key, expires_at=expires_at)
     db.add(db_key)
     await db.commit()
     
-    # Send the key via email
     email_body = f"""
     <html>
         <body>

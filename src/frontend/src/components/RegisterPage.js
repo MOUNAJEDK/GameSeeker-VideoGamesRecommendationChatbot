@@ -50,15 +50,15 @@ const RegisterPage = ({ setToken }) => {
       if (response.ok) {
         setMessage(data.message);
         setIsKeyRequested(true);
-        setError(''); // Clear any previous errors
+        setError('');
       } else {
         setError(data.detail || 'Failed to send verification key. Please try again.');
-        setMessage(''); // Clear any previous messages
+        setMessage('');
       }
     } catch (error) {
       console.error('Verification key request error:', error);
       setError('An error occurred. Please try again.');
-      setMessage(''); // Clear any previous messages
+      setMessage('');
     }
   };
 

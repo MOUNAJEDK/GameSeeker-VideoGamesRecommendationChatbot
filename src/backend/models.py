@@ -23,7 +23,7 @@ class MentionedGame(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     game_title = Column(String, index=True)
     mention_count = Column(Integer, default=1)
-    sentiment_score = Column(Float, default=-1.0)  # New column
+    sentiment_score = Column(Float, default=-1.0)
 
     user = relationship("User", back_populates="mentioned_games")
 

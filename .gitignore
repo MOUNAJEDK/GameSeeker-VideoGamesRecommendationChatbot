@@ -1,2 +1,58 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# IDE specific files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+
+# Configuration files with sensitive information
+config.ini
+secrets.json
+
+# Dependency directories
+node_modules/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# dotenv environment variables file
 .env
-.venv
+
+# FastAPI specific
+.fastapi_cache/
+
+# Checkpoint database
+db/checkpoints.db
+
+# Users database
+db/users.db
+
+# Any other sensitive or environment-specific files
+*.pem
+*.key

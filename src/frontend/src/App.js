@@ -47,7 +47,7 @@ function App() {
   };
 
   if (isValidating) {
-    return <div>Loading...</div>; // Or a more sophisticated loading component
+    return <div>Loading...</div>;
   }
 
   return (
