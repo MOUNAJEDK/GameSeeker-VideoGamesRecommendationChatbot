@@ -5,7 +5,7 @@ import os
 
 load_dotenv()
 
-LLM = ChatOpenAI(model="gpt-4o", temperature=0)
+LLM = ChatOpenAI(model="gpt-4o", temperature=0.2)
 
 GAME_TITLE_SEARCH_TOOL = TavilySearchResults(k=10)
 
