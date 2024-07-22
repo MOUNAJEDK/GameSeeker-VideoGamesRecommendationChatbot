@@ -1,0 +1,40 @@
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: transparent;
+  color: #e0e0e0;
+  font-family: 'Poppins', sans-serif;
+  position: relative;
+  z-index: 2;
+  padding-bottom: 5rem;
+
+  .navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: rgba(10, 10, 10, 0.8);
+    padding: 1rem;
+    border-bottom: none;
+
+    .navbar-title {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    .navbar-actions {
+      display: flex;
+      align-items: center;
+    }
+
+    .clear-chat-button,
+    .logout-button {
+      color: #ff4d4d;
+      margin-left: 0.5rem;
+      
+      &:hover {
+        background-color: rgba(255, 77, 77, 0.1);
+      }
+    }
+  }
+}

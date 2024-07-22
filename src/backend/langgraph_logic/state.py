@@ -1,0 +1,19 @@
+from typing import Annotated
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages, AnyMessage
+
+class State(TypedDict):
+    messages: Annotated[list[AnyMessage], add_messages]
+    query: str
+    category: str
+    games: list[str]
+    details: dict[str, dict]
+    links: list[str]
+    index: int
+    response: str
+    user_id: int
+    extracted_game: str
+    inquiry_next_node: str
+    node_to_sentiment_analysis: str
+    recommended_game: str
+    for_user: bool

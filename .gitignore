@@ -1,2 +1,70 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+
+# Database
+*.db
+*.sqlite3
+backend/db/*.db
+backend/db/*.db-shm
+backend/db/*.db-wal
+
+# Logs
+*.log
+
+# IDE specific files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+
+# Configuration files with sensitive information
+config.ini
+secrets.json
 .env
-.venv
+
+# Dependency directories
+node_modules/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# FastAPI specific
+.fastapi_cache/
+
+# Frontend build
+frontend/build/
+
+# Poetry
+poetry.lock
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Any other sensitive or environment-specific files
+*.pem
+*.key
+
+# Specific to your project
+backend/db/checkpoints.db
+backend/db/users.db
