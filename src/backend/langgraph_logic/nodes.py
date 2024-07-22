@@ -124,7 +124,6 @@ def answer_analysis_node(db_session_factory: Callable[[], AsyncSession]):
         
         if state["for_user"]:
             async with db_session_factory() as db:
-                # Add or update the extracted game
                 result = await db.execute(
                     select(MentionedGame).where(
                         (MentionedGame.user_id == state["user_id"]) & 
@@ -137,7 +136,7 @@ def answer_analysis_node(db_session_factory: Callable[[], AsyncSession]):
                     new_mentioned_game = MentionedGame(
                         user_id=state["user_id"],
                         game_title=state["extracted_game"],
-                        sentiment_score=-1.0  # Default sentiment score
+                        sentiment_score=-1.0
                     )
                     db.add(new_mentioned_game)
                     state["response"] += f"\nI've noted your interest in \"{state['extracted_game']}\"."
@@ -145,7 +144,6 @@ def answer_analysis_node(db_session_factory: Callable[[], AsyncSession]):
                     existing_game.mention_count += 1
                     state["response"] += f"\nI see you've mentioned \"{state['extracted_game']}\" again."
 
-                # Add recommended games
                 for game in state["games"]:
                     result = await db.execute(
                         select(MentionedGame).where(
@@ -159,7 +157,7 @@ def answer_analysis_node(db_session_factory: Callable[[], AsyncSession]):
                         new_mentioned_game = MentionedGame(
                             user_id=state["user_id"],
                             game_title=game,
-                            sentiment_score=-1.0  # Default sentiment score
+                            sentiment_score=-1.0
                         )
                         db.add(new_mentioned_game)
                     else:
@@ -246,7 +244,6 @@ def incomplete_query_handler_node(db_session_factory: Callable[[], AsyncSession]
 def recommended_game_inquiry_node(db_session_factory: Callable[[], AsyncSession]):
     async def _recommended_game_inquiry_node(state: State):
         async with db_session_factory() as db:
-            # Query for a game that meets our criteria
             query = select(MentionedGame).where(
                 (MentionedGame.user_id == state["user_id"]) &
                 (MentionedGame.game_title != state["extracted_game"]) &
