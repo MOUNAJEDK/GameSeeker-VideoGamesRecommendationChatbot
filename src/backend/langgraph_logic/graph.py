@@ -88,17 +88,10 @@ def create_graph(db_session_factory: Callable[[], AsyncSession]):
             return END
         
     def recommended_game_inquiry_router(state: State):
-<<<<<<< HEAD
-        if state["inquiry_next_node"] == "game_title_search":
-            return "game_title_search"
-        else:
-            return END
-=======
         if state["inquiry_next_node"] == "sentiment_analysis_node":
             return END
         else:
             return "game_title_search"
->>>>>>> 1d1924342736f0feea7e59bb47a3abbc02f5e796
 
     graph_builder.add_conditional_edges("query_classification", query_router)
     graph_builder.add_conditional_edges("incomplete_query_handler", incomplete_query_router)
