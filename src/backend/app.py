@@ -27,7 +27,7 @@ import os
 
 load_dotenv()
 
-os.environ["LANGCHAIN_API_KEY"] = "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"
+os.environ["LANGCHAIN_API_KEY"] = ""
 os.environ["LANGCHAIN_PROJECT"] = "GameSeeker-AI"
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 
